@@ -1,18 +1,18 @@
 const tg = (window as any).Telegram.WebApp;
-tg.ready(); // Telegram сообщит, что мини-приложение готово
+tg.ready(); 
 
-// Расширим интерфейс
+
 const imageInput = document.getElementById("imageInput") as HTMLInputElement;
 const uploadButton = document.getElementById("uploadButton") as HTMLButtonElement;
 const resultDiv = document.getElementById("result") as HTMLDivElement;
 
-// Получим данные пользователя Telegram
+
 const user = tg.initDataUnsafe.user;
 if (user) {
   resultDiv.innerHTML = 'Привет, <strong>${user.first_name}</strong>!';
 }
 
-// Обработчик кнопки
+
 uploadButton.addEventListener("click", async () => {
   const file = imageInput.files?.[0];
 
@@ -39,4 +39,14 @@ uploadButton.addEventListener("click", async () => {
     resultDiv.textContent = "Произошла ошибка при анализе.";
     console.error(err);
   }
+});
+function navigateTo(pageId: string) {
+  const pages = document.querySelectorAll('.page');
+  pages.forEach(p => p.classList.remove('active'));
+
+  const target = document.getElementById(pageId);
+  if (target) target.classList.add('active');
+}
+window.addEventListener('DOMContentLoaded', () => {
+  navigateTo('diagnose');
 });

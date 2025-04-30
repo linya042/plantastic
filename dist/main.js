@@ -9,17 +9,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 const tg = window.Telegram.WebApp;
-tg.ready(); // Telegram сообщит, что мини-приложение готово
-// Расширим интерфейс
+tg.ready();
 const imageInput = document.getElementById("imageInput");
 const uploadButton = document.getElementById("uploadButton");
 const resultDiv = document.getElementById("result");
-// Получим данные пользователя Telegram
 const user = tg.initDataUnsafe.user;
 if (user) {
     resultDiv.innerHTML = 'Привет, <strong>${user.first_name}</strong>!';
 }
-// Обработчик кнопки
 uploadButton.addEventListener("click", () => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b;
     const file = (_a = imageInput.files) === null || _a === void 0 ? void 0 : _a[0];
@@ -45,3 +42,13 @@ uploadButton.addEventListener("click", () => __awaiter(void 0, void 0, void 0, f
         console.error(err);
     }
 }));
+function navigateTo(pageId) {
+    const pages = document.querySelectorAll('.page');
+    pages.forEach(p => p.classList.remove('active'));
+    const target = document.getElementById(pageId);
+    if (target)
+        target.classList.add('active');
+}
+window.addEventListener('DOMContentLoaded', () => {
+    navigateTo('diagnose');
+});
