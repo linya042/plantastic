@@ -99,10 +99,10 @@ function renderMonth(date) {
         monthGrid.appendChild(cell);
     }
     const monthName = monthNames[month];
-    calendarMonthName.textContent = '${monthName} ${year}';
+    calendarMonthName.textContent = `${monthName} ${year}`;
 }
 function updateSelectedDate() {
-    selectedDateLabel.textContent = '${selectedDate.getDate()} ${monthNames[selectedDate.getMonth()]}';
+    selectedDateLabel.textContent = `${selectedDate.getDate()} ${monthNames[selectedDate.getMonth()]}`;
 }
 // Кнопки переключения месяцев
 (_c = document.getElementById("prevMonth")) === null || _c === void 0 ? void 0 : _c.addEventListener("click", () => {
