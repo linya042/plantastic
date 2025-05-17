@@ -118,11 +118,11 @@ function renderMonth(date: Date) {
   }
 
   const monthName = monthNames[month];
-  calendarMonthName.textContent = '${monthName} ${year}';
+  calendarMonthName.textContent = `${monthName} ${year}`;
 }
 
 function updateSelectedDate() {
-  selectedDateLabel.textContent = '${selectedDate.getDate()} ${monthNames[selectedDate.getMonth()]}';
+  selectedDateLabel.textContent = `${selectedDate.getDate()} ${monthNames[selectedDate.getMonth()]}`;
 }
 
 // Кнопки переключения месяцев
