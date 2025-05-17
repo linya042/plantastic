@@ -1,5 +1,5 @@
 "use strict";
-var _a, _b;
+var _a, _b, _c, _d, _e;
 // Telegram init
 const tg = window.Telegram.WebApp;
 tg.ready();
@@ -66,3 +66,60 @@ window.addEventListener('DOMContentLoaded', () => {
     renderWeek(currentStartDate);
     navigateTo('diagnose');
 });
+const monthGrid = document.getElementById("monthGrid");
+const calendarMonthName = document.getElementById("calendarMonthName");
+const selectedDateLabel = document.getElementById("selectedDateLabel");
+let selectedDate = new Date();
+function renderMonth(date) {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const startDay = (firstDay.getDay() + 6) % 7;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    monthGrid.innerHTML = "";
+    // Пустые ячейки перед началом месяца
+    for (let i = 0; i < startDay; i++) {
+        const emptyCell = document.createElement("div");
+        monthGrid.appendChild(emptyCell);
+    }
+    for (let day = 1; day <= daysInMonth; day++) {
+        const cell = document.createElement("div");
+        cell.textContent = day.toString();
+        cell.classList.add("calendar-cell");
+        const cellDate = new Date(year, month, day);
+        if (isSameDay(cellDate, new Date()))
+            cell.classList.add("today");
+        if (isSameDay(cellDate, selectedDate))
+            cell.classList.add("selected");
+        cell.addEventListener("click", () => {
+            selectedDate = cellDate;
+            updateSelectedDate();
+            renderMonth(selectedDate); // Перерисовка, чтобы обновить выделение
+        });
+        monthGrid.appendChild(cell);
+    }
+    const monthName = monthNames[month];
+    calendarMonthName.textContent = '${monthName} ${year}';
+}
+function updateSelectedDate() {
+    selectedDateLabel.textContent = '${selectedDate.getDate()} ${monthNames[selectedDate.getMonth()]}';
+}
+// Кнопки переключения месяцев
+(_c = document.getElementById("prevMonth")) === null || _c === void 0 ? void 0 : _c.addEventListener("click", () => {
+    selectedDate.setMonth(selectedDate.getMonth() - 1);
+    renderMonth(selectedDate);
+    updateSelectedDate();
+});
+(_d = document.getElementById("nextMonth")) === null || _d === void 0 ? void 0 : _d.addEventListener("click", () => {
+    selectedDate.setMonth(selectedDate.getMonth() + 1);
+    renderMonth(selectedDate);
+    updateSelectedDate();
+});
+// Добавить событие
+(_e = document.getElementById("addEventButton")) === null || _e === void 0 ? void 0 : _e.addEventListener("click", () => {
+    const type = document.getElementById("eventType").value;
+    const plant = document.getElementById("plantSelect").value;
+    alert(`Добавлено: ${type} — ${plant} на ${selectedDate.toLocaleDateString("ru-RU")}`);
+});
+renderMonth(selectedDate);
+updateSelectedDate();
