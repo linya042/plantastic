@@ -2,37 +2,65 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-
-  <title>Plantastic</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plantactic</title>
   <link rel="stylesheet" href="style.css" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-  <!-- Верхняя рабочая часть -->
+  <!-- Календарь -->
+  <div id="calendarWidget" class="calendar-widget">
+    <div class="calendar-header">
+      <button id="prevWeekBtn">&lt;</button>
+      <span id="calendarMonth">Месяц</span>
+      <button id="nextWeekBtn">&gt;</button>
+    </div>
+    <div class="calendar-days" id="calendarDays"></div>
+  </div>
+
+  <!-- Блок задач -->
+  <section id="tasksToday" class="today-tasks">
+    <h3>Ваши планы:</h3>
+    <div class="task-block">
+      <img src="icons/полив.png" alt="Полив" />
+      <div>
+        <strong>Полить:</strong>
+        <ul>
+          <li>Монстера</li>
+          <li>Фикус</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="task-block">
+      <img src="icons/удобрения.png" alt="Удобрение" />
+      <div>
+        <strong>Удобрить:</strong>
+        <ul>
+          <li>Монстера</li>
+          <li>Фикус</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Разделы -->
   <main id="content">
-    <!-- Секции будут меняться в зависимости от выбранного раздела -->
-    <section id="diagnose" class="page active">
-
-  <input type="file" id="imageInput" accept="image/*"/>
-  <button id="uploadButton">Отправить</button>
-
-  <div id="result"></div>
-
-  <script src="dist/main.js" defer></script>
-</section> 
-    <section id="identify" class="page">...контент определения вида...</section>
-    <section id="calendar" class="page">...контент календаря...</section>
-    <section id="water" class="page">...контент расчёта воды...</section>
-    <section id="info" class="page">...контент инфо о растении...</section>
+    <section id="diagnose" class="page active"></section>
+    <section id="identify" class="page">Здесь определение вида</section>
+    <section id="calendar" class="page">Календарь</section>
+    <section id="water" class="page">Расчёт полива</section>
+    <section id="info" class="page">Инфо о растении</section>
   </main>
 
   <!-- Нижняя навигация -->
   <nav class="bottom-nav">
-    <button onclick="navigateTo('diagnose')">Диагностика</button>
-    <button onclick="navigateTo('identify')">Определение</button>
-    <button onclick="navigateTo('calendar')">Календарь</button>
-    <button onclick="navigateTo('water')">Полив</button>
-    <button onclick="navigateTo('info')">Инфо</button>
-  </nav>
+    <button onclick="navigateTo('identify')"><img src="icons/определитель.png" alt="Определение" /></button>
+    <button onclick="navigateTo('calendar')"><img src="icons/calendar.png" alt="Календарь" /></button>
+    <button onclick="navigateTo('diagnose')"><img src="icons/главная.png" alt="Главная" /></button>
+    <button onclick="navigateTo('water')"><img src="icons/калькулятор_воды.png" alt="Калькулятор воды" /></button>
+    <button onclick="navigateTo('info')"><img src="icons/аккаунт.png" alt="Аккаунт" /></button>
+
+  <script src="dist/main.js" defer></script>
 </body>
 </html>
