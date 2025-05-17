@@ -147,3 +147,34 @@ document.getElementById("addEventButton")?.addEventListener("click", () => {
 
 renderMonth(selectedDate);
 updateSelectedDate();
+const plantPhotoInput = document.getElementById('plantPhotoInput') as HTMLInputElement;
+const analyzeResult = document.getElementById('analyzeResult')!;
+document.getElementById('detectSortBtn')?.addEventListener('click', () => {
+  if (plantPhotoInput.files?.length) {
+    analyzeResult.textContent = 'Определён сорт: Монстера';
+  } else {
+    analyzeResult.textContent = 'Сначала загрузите фото.';
+  }
+});
+
+document.getElementById('detectDiseaseBtn')?.addEventListener('click', () => {
+  if (plantPhotoInput.files?.length) {
+    analyzeResult.textContent = 'Обнаружена болезнь: Паутинный клещ';
+  } else {
+    analyzeResult.textContent = 'Сначала загрузите фото.';
+  }
+});
+document.getElementById('calcWaterBtn')?.addEventListener('click', () => {
+  const height = parseFloat((document.getElementById('plantHeight') as HTMLInputElement).value);
+  const type = (document.getElementById('plantSelect') as HTMLSelectElement).value;
+  const output = document.getElementById('waterResult')!;
+
+  if (isNaN(height) || height <= 0) {
+    output.textContent = 'Введите корректную высоту.';
+    return;
+  }
+
+  let multiplier = type === 'monstera' ? 0.5 : 0.4;
+  const result = (height * multiplier).toFixed(1);
+  output.textContent = `Нужно ${result} мл воды.`;
+});

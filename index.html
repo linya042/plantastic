@@ -47,7 +47,21 @@
   <!-- Разделы -->
   <main id="content">
     <section id="diagnose" class="page active"></section>
-    <section id="identify" class="page">Здесь определение вида</section>
+    <section id="identify" class="page">  
+      <div class="analyze-wrapper">
+        <h2>Анализ растения</h2>
+
+        <label class="photo-label" for="plantPhotoInput">
+          <input type="file" id="plantPhotoInput" accept="image/*" />
+          <span>Загрузить фото</span>
+        </label>
+
+        <button id="detectSortBtn">Определить сорт</button>
+        <button id="detectDiseaseBtn">Распознать болезнь</button>
+
+        <div class="result-box" id="analyzeResult">Здесь появится результат</div>
+      </div>
+    </section>
     <section id="calendar" class="page">
       <div class="month-calendar">
         <div class="calendar-nav">
@@ -77,7 +91,24 @@
         <button id="addEventButton">Добавить событие</button>
       </div>
     </section>
-    <section id="water" class="page">Расчёт полива</section>
+    <section id="water" class="page">
+      <div class="water-box">
+        <h2>Калькулятор воды</h2>
+
+        <label for="plantSelect">Растение:</label>
+        <select id="plantSelect">
+          <option value="monstera">Монстера</option>
+          <option value="ficus">Фикус</option>
+        </select>
+
+        <label for="plantHeight">Высота (см):</label>
+        <input type="number" id="plantHeight" min="1" />
+
+        <button id="calcWaterBtn">Рассчитать</button>
+
+        <div class="water-result" id="waterResult">Результат появится здесь</div>
+      </div>
+    </section>
     <section id="info" class="page">Инфо о растении</section>
   </main>
 

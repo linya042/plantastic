@@ -195,3 +195,81 @@ html, body {
   font-weight: bold;
   cursor: pointer;
 }
+.analyze-wrapper {
+  margin: 1rem;
+  background: #e7f6d9;
+  border-radius: 16px;
+  padding: 1.2rem;
+  box-shadow: 0 0 4px rgba(0,0,0,0.1);
+}
+
+.photo-label {
+  display: block;
+  background: #c4e093;
+  padding: 0.7rem;
+  text-align: center;
+  border-radius: 10px;
+  cursor: pointer;
+  margin-bottom: 1rem;
+}
+
+.photo-label input {
+  display: none;
+}
+
+.analyze-wrapper button {
+  width: 100%;
+  margin-bottom: 0.5rem;
+  padding: 0.8rem;
+  background: #b6d67e;
+  border: none;
+  border-radius: 10px;
+  font-weight: bold;
+}
+
+.result-box {
+  margin-top: 1rem;
+  background: #fff;
+  border-radius: 10px;
+  padding: 1rem;
+  text-align: center;
+  font-style: italic;
+}
+.water-box {
+  background: #e7f6d9;
+  margin: 1rem;
+  padding: 1rem;
+  border-radius: 16px;
+}
+
+.water-box label {
+  display: block;
+  margin-top: 1rem;
+}
+
+.water-box select,
+.water-box input {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: none;
+  margin-top: 0.3rem;
+}
+
+.water-box button {
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.8rem;
+  background: #b6d67e;
+  border: none;
+  border-radius: 10px;
+  font-weight: bold;
+}
+
+.water-result {
+  margin-top: 1rem;
+  background: #fff;
+  padding: 1rem;
+  border-radius: 10px;
+  text-align: center;
+}

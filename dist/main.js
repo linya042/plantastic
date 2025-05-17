@@ -1,5 +1,5 @@
 "use strict";
-var _a, _b, _c, _d, _e;
+var _a, _b, _c, _d, _e, _f, _g, _h;
 // Telegram init
 const tg = window.Telegram.WebApp;
 tg.ready();
@@ -123,3 +123,35 @@ function updateSelectedDate() {
 });
 renderMonth(selectedDate);
 updateSelectedDate();
+const plantPhotoInput = document.getElementById('plantPhotoInput');
+const analyzeResult = document.getElementById('analyzeResult');
+(_f = document.getElementById('detectSortBtn')) === null || _f === void 0 ? void 0 : _f.addEventListener('click', () => {
+    var _a;
+    if ((_a = plantPhotoInput.files) === null || _a === void 0 ? void 0 : _a.length) {
+        analyzeResult.textContent = 'Определён сорт: Монстера';
+    }
+    else {
+        analyzeResult.textContent = 'Сначала загрузите фото.';
+    }
+});
+(_g = document.getElementById('detectDiseaseBtn')) === null || _g === void 0 ? void 0 : _g.addEventListener('click', () => {
+    var _a;
+    if ((_a = plantPhotoInput.files) === null || _a === void 0 ? void 0 : _a.length) {
+        analyzeResult.textContent = 'Обнаружена болезнь: Паутинный клещ';
+    }
+    else {
+        analyzeResult.textContent = 'Сначала загрузите фото.';
+    }
+});
+(_h = document.getElementById('calcWaterBtn')) === null || _h === void 0 ? void 0 : _h.addEventListener('click', () => {
+    const height = parseFloat(document.getElementById('plantHeight').value);
+    const type = document.getElementById('plantSelect').value;
+    const output = document.getElementById('waterResult');
+    if (isNaN(height) || height <= 0) {
+        output.textContent = 'Введите корректную высоту.';
+        return;
+    }
+    let multiplier = type === 'monstera' ? 0.5 : 0.4;
+    const result = (height * multiplier).toFixed(1);
+    output.textContent = `Нужно ${result} мл воды.`;
+});
