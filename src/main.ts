@@ -1,180 +1,192 @@
-// Telegram init
-const tg = (window as any).Telegram.WebApp;
-tg.ready();
 
-// Переход между страницами
+const API_URL = "http://127.0.0.1:8000";
+const daysOfWeek = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"];
+const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+
 function navigateTo(pageId: string) {
-  const pages = document.querySelectorAll('.page');
-  pages.forEach(page => page.classList.remove('active'));
-
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
   const target = document.getElementById(pageId);
-  if (target) target.classList.add('active');
+  if (target){ 
+    target.classList.add("active");
 
-  const calendarWidget = document.getElementById('calendarWidget');
-  const tasksToday = document.getElementById('tasksToday');
-
-  if (pageId === 'diagnose') {
-    calendarWidget!.style.display = 'block';
-    tasksToday!.style.display = 'block';
-  } else {
-    calendarWidget!.style.display = 'none';
-    tasksToday!.style.display = 'none';
+    if (pageId === "water") setupWaterCalculator();
   }
 }
 
-// ======= Календарь =======
-const daysOfWeek = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
-const monthNames = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
 
-let currentStartDate = new Date();
-currentStartDate.setDate(currentStartDate.getDate() - ((currentStartDate.getDay() + 6) % 7)); // сдвиг на понедельник
-
-function renderWeek(startDate: Date) {
-  const container = document.getElementById('calendarDays')!;
-  const monthSpan = document.getElementById('calendarMonth')!;
-  container.innerHTML = '';
-
-  for (let i = 0; i < 7; i++) {
-    const day = new Date(startDate);
-    day.setDate(startDate.getDate() + i);
-
-    const isToday = isSameDay(day, new Date());
-
-    const dayDiv = document.createElement('div');
-    dayDiv.classList.add('calendar-day');
-    if (isToday) dayDiv.classList.add('today');
-
-    const weekday = daysOfWeek[(day.getDay() + 6) % 7];
-
-    dayDiv.innerHTML = `
-      <div class="weekday">${weekday}</div>
-      <div class="date">${day.getDate()}</div>
-    `;
-    container.appendChild(dayDiv);
-  }
-
-  monthSpan.textContent = monthNames[startDate.getMonth()];
+function formatDate(date: Date): string {
+  return date.toISOString().split("T")[0];
 }
-
 function isSameDay(d1: Date, d2: Date): boolean {
   return d1.getDate() === d2.getDate() &&
          d1.getMonth() === d2.getMonth() &&
          d1.getFullYear() === d2.getFullYear();
 }
 
-// Кнопки переключения недель
-document.getElementById('prevWeekBtn')?.addEventListener('click', () => {
+async function fetchTasksByDate(dateStr: string): Promise<string[]> {
+  const res = await fetch(`${API_URL}/tasks?date=${dateStr}`);
+  return res.ok ? (await res.json()).map((t: any) => t.text) : [];
+}
+async function addTask(dateStr: string, text: string) {
+  await fetch(`${API_URL}/tasks`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ date: dateStr, text })
+  });
+}
+
+// === Виджет недели ===
+let currentStartDate = new Date();
+currentStartDate.setDate(currentStartDate.getDate() - ((currentStartDate.getDay() + 6) % 7));
+
+async function renderWeek(startDate: Date) {
+  const container = document.getElementById("calendarDays")!;
+  const monthSpan = document.getElementById("calendarMonth")!;
+  container.innerHTML = "";
+
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(startDate);
+    date.setDate(startDate.getDate() + i);
+    const dateStr = formatDate(date);
+    const tasks = await fetchTasksByDate(dateStr);
+
+    const div = document.createElement("div");
+    div.classList.add("calendar-day");
+    if (isSameDay(date, new Date())) div.classList.add("today");
+    if (tasks.length) div.innerHTML = '<div class="task-dot"></div>';
+    div.innerHTML += `<div class="weekday">${daysOfWeek[(date.getDay() + 6) % 7]}</div><div class="date">${date.getDate()}</div>`;
+    div.addEventListener("click", async () => {
+      const taskList = document.getElementById("weekTaskList")!;
+      taskList.innerHTML = "";
+      const tasks = await fetchTasksByDate(dateStr);
+      tasks.forEach(t => {
+        const li = document.createElement("li");
+        li.textContent = t;
+        taskList.appendChild(li);
+      });
+    });
+    container.appendChild(div);
+  }
+  monthSpan.textContent = monthNames[startDate.getMonth()];
+}
+
+document.getElementById("prevWeekBtn")?.addEventListener("click", () => {
   currentStartDate.setDate(currentStartDate.getDate() - 7);
   renderWeek(currentStartDate);
 });
-
-document.getElementById('nextWeekBtn')?.addEventListener('click', () => {
+document.getElementById("nextWeekBtn")?.addEventListener("click", () => {
   currentStartDate.setDate(currentStartDate.getDate() + 7);
   renderWeek(currentStartDate);
 });
 
-// Запуск при загрузке
-window.addEventListener('DOMContentLoaded', () => {
-  renderWeek(currentStartDate);
-  navigateTo('diagnose');
-});
-const monthGrid = document.getElementById("monthGrid")!;
-const calendarMonthName = document.getElementById("calendarMonthName")!;
-const selectedDateLabel = document.getElementById("selectedDateLabel")!;
+// === Календарь месяца ===
 let selectedDate = new Date();
 
-function renderMonth(date: Date) {
+function updateSelectedDateLabel() {
+  const label = document.getElementById("selectedDateLabel")!;
+  label.textContent = `${selectedDate.getDate()} ${monthNames[selectedDate.getMonth()]}`;
+}
+
+async function renderMonth(date: Date) {
+  const grid = document.getElementById("monthGrid")!;
+  const label = document.getElementById("calendarMonthName")!;
   const year = date.getFullYear();
   const month = date.getMonth();
-
   const firstDay = new Date(year, month, 1);
   const startDay = (firstDay.getDay() + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  monthGrid.innerHTML = "";
-
-  // Пустые ячейки перед началом месяца
-  for (let i = 0; i < startDay; i++) {
-    const emptyCell = document.createElement("div");
-    monthGrid.appendChild(emptyCell);
-  }
+  grid.innerHTML = "";
+  for (let i = 0; i < startDay; i++) grid.appendChild(document.createElement("div"));
 
   for (let day = 1; day <= daysInMonth; day++) {
+    const d = new Date(year, month, day);
     const cell = document.createElement("div");
-    cell.textContent = day.toString();
     cell.classList.add("calendar-cell");
-
-    const cellDate = new Date(year, month, day);
-    if (isSameDay(cellDate, new Date())) cell.classList.add("today");
-    if (isSameDay(cellDate, selectedDate)) cell.classList.add("selected");
-
+    cell.textContent = day.toString();
+    if (isSameDay(d, new Date())) cell.classList.add("today");
+    if (isSameDay(d, selectedDate)) cell.classList.add("selected");
     cell.addEventListener("click", () => {
-      selectedDate = cellDate;
-      updateSelectedDate();
-      renderMonth(selectedDate); // Перерисовка, чтобы обновить выделение
-    });
-
-    monthGrid.appendChild(cell);
+      selectedDate = d;
+      updateSelectedDateLabel();
+      renderMonth(selectedDate);
+    });grid.appendChild(cell);
   }
 
-  const monthName = monthNames[month];
-  calendarMonthName.textContent = `${monthName} ${year}`;
+  label.textContent = `${monthNames[month]} ${year}`;
 }
 
-function updateSelectedDate() {
-  selectedDateLabel.textContent = `${selectedDate.getDate()} ${monthNames[selectedDate.getMonth()]}`;
-}
-
-// Кнопки переключения месяцев
 document.getElementById("prevMonth")?.addEventListener("click", () => {
   selectedDate.setMonth(selectedDate.getMonth() - 1);
   renderMonth(selectedDate);
-  updateSelectedDate();
+  updateSelectedDateLabel();
 });
-
 document.getElementById("nextMonth")?.addEventListener("click", () => {
   selectedDate.setMonth(selectedDate.getMonth() + 1);
   renderMonth(selectedDate);
-  updateSelectedDate();
+  updateSelectedDateLabel();
 });
 
-// Добавить событие
-document.getElementById("addEventButton")?.addEventListener("click", () => {
+document.getElementById("addEventButton")?.addEventListener("click", async () => {
   const type = (document.getElementById("eventType") as HTMLSelectElement).value;
   const plant = (document.getElementById("plantSelect") as HTMLSelectElement).value;
-  alert(`Добавлено: ${type} — ${plant} на ${selectedDate.toLocaleDateString("ru-RU")}`);
+  const text = `${type}: ${plant}`;
+  const dateStr = formatDate(selectedDate);
+  await addTask(dateStr, text);
+  alert("Событие добавлено!");
 });
 
-renderMonth(selectedDate);
-updateSelectedDate();
-const plantPhotoInput = document.getElementById('plantPhotoInput') as HTMLInputElement;
-const analyzeResult = document.getElementById('analyzeResult')!;
-document.getElementById('detectSortBtn')?.addEventListener('click', () => {
-  if (plantPhotoInput.files?.length) {
-    analyzeResult.textContent = 'Определён сорт: Монстера';
-  } else {
-    analyzeResult.textContent = 'Сначала загрузите фото.';
-  }
+// === Распознавание по фото (заглушка) ===
+document.getElementById("infoBtn")?.addEventListener("click", () => {
+  const result = document.getElementById("recognitionResult")!;
+  result.textContent = "Информация: Это Монстера. Любит рассеянный свет.";
 });
 
-document.getElementById('detectDiseaseBtn')?.addEventListener('click', () => {
-  if (plantPhotoInput.files?.length) {
-    analyzeResult.textContent = 'Обнаружена болезнь: Паутинный клещ';
-  } else {
-    analyzeResult.textContent = 'Сначала загрузите фото.';
-  }
+document.getElementById("sortBtn")?.addEventListener("click", () => {
+  const result = document.getElementById("recognitionResult")!;
+  result.textContent = "Сорт: Монстера делициоза";
 });
-document.getElementById('calcWaterBtn')?.addEventListener('click', () => {
-  const height = parseFloat((document.getElementById('plantHeight') as HTMLInputElement).value);
-  const type = (document.getElementById('plantSelect') as HTMLSelectElement).value;
-  const output = document.getElementById('waterResult')!;
 
-  if (isNaN(height) || height <= 0) {
-    output.textContent = 'Введите корректную высоту.';
-    return;
-  }
+document.getElementById("diseaseBtn")?.addEventListener("click", () => {
+  const result = document.getElementById("recognitionResult")!;
+  result.textContent = "Болезнь: Паутинный клещ";
+});
+// === Калькулятор воды ===
+let waterSetupDone = false;
 
-  let multiplier = type === 'monstera' ? 0.5 : 0.4;
-  const result = (height * multiplier).toFixed(1);
-  output.textContent = `Нужно ${result} мл воды.`;
+function setupWaterCalculator() {
+  if (waterSetupDone) return;
+  waterSetupDone = true;
+
+  document.getElementById("calcWaterBtn")?.addEventListener("click", () => {
+    const temp = parseInt(document.getElementById("temperature")!.textContent!);
+    const humidity = parseInt(document.getElementById("humidity")!.textContent!);
+    const potSize = parseInt(document.getElementById("potSize")!.textContent!);
+    const growth = (document.querySelector('input[name="growth"]:checked') as HTMLInputElement).value;
+
+    let multiplier = 1.0;
+    if (growth === "rest") multiplier *= 0.7;
+    if (temp < 15) multiplier *= 0.8;
+    if (humidity > 60) multiplier *= 0.85;
+
+    const result = Math.round(potSize * 100 * multiplier);
+    const resultDiv = document.getElementById("waterResult")!;
+    resultDiv.textContent = `Вашему растению нужно: ${result} мл`;
+  });
+}
+
+function changeValue(id: string, delta: number) {
+  const el = document.getElementById(id)!;
+  let value = parseInt(el.textContent || "0");
+  value = Math.max(0, value + delta);
+  el.textContent = value.toString();
+}
+
+
+// === Инициализация ===
+window.addEventListener("DOMContentLoaded", () => {
+  navigateTo("diagnose");
+  renderWeek(currentStartDate);
+  renderMonth(selectedDate);
+  updateSelectedDateLabel();
 });

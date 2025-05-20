@@ -8,117 +8,114 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-  <!-- Календарь -->
-  <div id="calendarWidget" class="calendar-widget">
-    <div class="calendar-header">
-      <button id="prevWeekBtn">&lt;</button>
-      <span id="calendarMonth">Месяц</span>
-      <button id="nextWeekBtn">&gt;</button>
-    </div>
-    <div class="calendar-days" id="calendarDays"></div>
-  </div>
-
-  <!-- Блок задач -->
-  <section id="tasksToday" class="today-tasks">
-    <h3>Ваши планы:</h3>
-    <div class="task-block">
-      <img src="icons/полив.svg" alt="Полив" />
-      <div>
-        <strong>Полить:</strong>
-        <ul>
-          <li>Монстера</li>
-          <li>Фикус</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="task-block">
-      <img src="icons/удобрения.svg" alt="Удобрение" />
-      <div>
-        <strong>Удобрить:</strong>
-        <ul>
-          <li>Монстера</li>
-          <li>Фикус</li>
-        </ul>
-      </div>
-    </div>
-  </section>
-
-  <!-- Разделы -->
-  <main id="content">
-    <section id="diagnose" class="page active"></section>
-    <section id="identify" class="page">  
-      <div class="analyze-wrapper">
-        <h2>Анализ растения</h2>
-
-        <label class="photo-label" for="plantPhotoInput">
-          <input type="file" id="plantPhotoInput" accept="image/*" />
-          <span>Загрузить фото</span>
-        </label>
-
-        <button id="detectSortBtn">Определить сорт</button>
-        <button id="detectDiseaseBtn">Распознать болезнь</button>
-
-        <div class="result-box" id="analyzeResult">Здесь появится результат</div>
+  <main>
+    <section id="diagnose" class="page active">
+      <div class="calendar-widget">
+        <div class="calendar-header">
+          <button id="prevWeekBtn">&lt;</button>
+          <span id="calendarMonth">Месяц</span>
+          <button id="nextWeekBtn">&gt;</button>
+        </div>
+        <div class="calendar-days" id="calendarDays"></div>
+        <ul id="weekTaskList" class="task-list"></ul>
       </div>
     </section>
+
     <section id="calendar" class="page">
+      <h2>Календарь</h2>
       <div class="month-calendar">
         <div class="calendar-nav">
           <button id="prevMonth">&lt;</button>
-          <span id="calendarMonthName">Май 2025</span>
+          <span id="calendarMonthName">Месяц</span>
           <button id="nextMonth">&gt;</button>
         </div>
         <div class="calendar-grid" id="monthGrid"></div>
       </div>
-
-      <div id="eventForm" class="event-form">
-        <h3>Событие на <span id="selectedDateLabel">5 мая</span>:</h3>
-    
-        <label>Добавить событие:</label>
+      <div class="event-form">
+        <h3>Событие на <span id="selectedDateLabel">...</span>:</h3>
         <select id="eventType">
-          <option value="watering">Полив</option>
-          <option value="fertilizing">Удобрение</option>
-          <option value="pruning">Обрезка</option>
+          <option value="Полив">Полив</option>
+          <option value="Удобрение">Удобрение</option>
         </select>
-
-        <label>Какие растения:</label>
         <select id="plantSelect">
           <option value="Монстера">Монстера</option>
           <option value="Фикус">Фикус</option>
         </select>
-
         <button id="addEventButton">Добавить событие</button>
       </div>
     </section>
-    <section id="water" class="page">
-      <div class="water-box">
-        <h2>Калькулятор воды</h2>
 
-        <label for="plantSelect">Растение:</label>
-        <select id="plantSelect">
-          <option value="monstera">Монстера</option>
-          <option value="ficus">Фикус</option>
-        </select>
-
-        <label for="plantHeight">Высота (см):</label>
-        <input type="number" id="plantHeight" min="1" />
-
-        <button id="calcWaterBtn">Рассчитать</button>
-
-        <div class="water-result" id="waterResult">Результат появится здесь</div>
+    <section id="recognition" class="page">
+      <h2>Распознавание</h2>
+      <div class="recognition-buttons">
+        <button id="infoBtn">Информация о растении</button>
+        <button id="sortBtn">Определить сорт</button>
+        <button id="diseaseBtn">Определить заболевание</button>
       </div>
+      <input type="file" id="photoInput" accept="image/*" />
+      <div id="recognitionResult"></div>
     </section>
-    <section id="info" class="page">Инфо о растении</section>
+
+    <section id="water" class="page">
+      <h2>Сколько воды нужно твоему растению?</h2>
+
+      <label for="plantType">Тип растения:</label>
+      <select id="plantType">
+        <option value="Монстера">Монстера</option>
+        <option value="Фикус">Фикус</option>
+      </select>
+
+      <div class="control-group">
+        <label>Температура:</label>
+        <div class="control">
+          <button onclick="changeValue('temperature', -1)">◀</button>
+          <span id="temperature">20</span>°C
+          <button onclick="changeValue('temperature', 1)">▶</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label>Влажность воздуха:</label>
+        <div class="control">
+          <button onclick="changeValue('humidity', -5)">◀</button>
+          <span id="humidity">50</span>%
+          <button onclick="changeValue('humidity', 5)">▶</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label>Объём горшка:</label>
+        <div class="control">
+          <button onclick="changeValue('potSize', -1)">◀</button>
+          <span id="potSize">2</span> л
+          <button onclick="changeValue('potSize', 1)">▶</button>
+        </div>
+      </div>
+
+      <div class="phase">
+        <label>Фаза роста:</label>
+        <label><input type="radio" name="growth" value="active" checked /> Активный</label>
+        <label><input type="radio" name="growth" value="rest" /> Покой</label>
+      </div>
+
+      <button id="calcWaterBtn">Рассчитать</button>
+
+      <div id="waterResult" class="water-result"></div>
+    </section>
+
+    <section id="info" class="page">
+      <h2>Профиль</h2>
+      <p>Информация о пользователе</p>
+    </section>
   </main>
 
-  <!-- Нижняя навигация -->
   <nav class="bottom-nav">
-    <button onclick="navigateTo('identify')"><img src="icons/определитель.svg" alt="Определение" /></button>
-    <button onclick="navigateTo('calendar')"><img src="icons/calendar.svg" alt="Календарь" /></button>
-    <button onclick="navigateTo('diagnose')"><img src="icons/главная.svg" alt="Главная" /></button>
-    <button onclick="navigateTo('water')"><img src="icons/калькулятор_воды.svg" alt="Калькулятор воды" /></button>
-    <button onclick="navigateTo('info')"><img src="icons/аккаунт.svg" alt="Аккаунт" /></button>
+    <button onclick="navigateTo('recognition')"><img src="icons/определитель.svg" /></button>
+    <button onclick="navigateTo('calendar')"><img src="icons/calendar.svg" /></button>
+    <button onclick="navigateTo('diagnose')"><img src="icons/главная.svg" /></button>
+    <button onclick="navigateTo('water')"><img src="icons/калькулятор_воды.svg" /></button>
+    <button onclick="navigateTo('info')"><img src="icons/аккаунт.svg" /></button>
+  </nav>
 
   <script src="dist/main.js" defer></script>
 </body>

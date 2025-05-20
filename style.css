@@ -1,275 +1,214 @@
 body {
-  margin: 0;
-  padding: 0;
   font-family: sans-serif;
-  display: flex;
+  margin: 0;
+  background: #f0f7ea;
+}
+.page {
+  display: none !important;
+  padding: 1rem;
+}
+.page.active {
+  display: flex !important;
   flex-direction: column;
-  height: 100vh; 
-  background-color: #ffffff;
+}
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  background: #cfe8b2;
+  display: flex;
+  justify-content: space-around;
+  padding: 0.3rem 0;
+  border-top: 2px solid #aacb84;
+}
+.bottom-nav button {
+  background: none;
+  border: none;
+  padding: 0.2rem;
+  flex: 1;
+}
+.bottom-nav img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
 }
 .calendar-widget {
-  display: none;
-  background-color: #d4e8a8;
+  background: #e6f5d0;
   padding: 1rem;
   border-radius: 12px;
-  margin: 0.5rem;
-}
-.today-tasks {
   margin: 1rem;
 }
-
-.task-block {
-  display: flex;
-  align-items: flex-start;
-  background-color: #eef7f4;
-  border-radius: 12px;
-  padding: 0.7rem;
-  margin-bottom: 0.6rem;
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
-}
-
-.task-block img {
-  width: 32px;
-  height: 32px;
-  margin-right: 0.8rem;
-}
-
 .calendar-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
   font-weight: bold;
   margin-bottom: 0.5rem;
 }
-
-.calendar-header button {
-  background-color: #b6d67e;
-  border: none;
-  border-radius: 6px;
-  padding: 0.3rem 0.6rem;
-  font-size: 1.2rem;
-  cursor: pointer;
-}
-
 .calendar-days {
   display: flex;
   justify-content: space-between;
 }
 .calendar-day {
-  text-align: center;
   flex: 1;
+  text-align: center;
   padding: 0.3rem;
-  border-radius: 8px;
-  font-size: 0.85rem;
+  border-radius: 6px;
+  background: #fff;
+  margin: 0 2px;
 }
-
 .calendar-day.today {
-  background-color: #b6d67e;
+  background: #b6d67e;
   font-weight: bold;
 }
-
-h1 {
-  margin-bottom: 1rem;
+.task-dot {
+  width: 6px;
+  height: 6px;
+  background: red;
+  border-radius: 50%;
+  margin: 0 auto 4px;
 }
-
-input,
-button {
-  margin: 0.5rem 0;
-  display: block;
-}
-
-#result {
-  margin-top: 1rem;
-  font-weight: bold; 
-margin: 0;
-display: flex;
-flex-direction: column;
-height: 100vh;
-}
-
-#content {
-flex: 1;
-overflow-y: auto;
-padding: 1rem;
-height: calc(100vh - 60px);
-}
-
-.bottom-nav {
-display: flex;
-justify-content: space-around;
-background-color: #c4e093;
-border-top: 1px solid #ccc;
-padding: 0.5rem 0;
-}
-
-.bottom-nav button {
-flex: 1;
-background: none;
-border: none;
-padding: 0.5rem;
-}
-.bottom-nav img {
-  width: 24px;
-  height: 24px;
-}
-
-.page {
-display: none;
-}
-
-.page.active {
-display: block;
-}
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
+.task-list {
+  margin-top: 0.5rem;
+  padding-left: 1rem;
 }
 .month-calendar {
-  background: #d4e8a8;
-  border-radius: 12px;
-  margin: 1rem;
+  background: #e6f5d0;
   padding: 1rem;
+  border-radius: 12px;
+  margin-bottom: 1rem;
 }
-
 .calendar-nav {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  font-weight: bold;
   margin-bottom: 0.5rem;
 }
-
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 4px;
-  text-align: center;
 }
-
 .calendar-cell {
+  background: #fff;
   padding: 0.5rem;
   border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
+  text-align: center;
 }
-
 .calendar-cell.today {
   background: #b6d67e;
-  font-weight: bold;
 }
-
 .calendar-cell.selected {
   background: #8ec074;
-  color: white;
+  color: #fff;
 }
-
 .event-form {
-  margin: 1rem;
-  background: #eef7f4;
-  border-radius: 12px;
+  background: #fff;
   padding: 1rem;
+  border-radius: 10px;
 }
-
-.event-form label {
-  display: block;
-  margin: 0.5rem 0 0.2rem;
-}
-
-.event-form select {
-  width: 100%;
-  padding: 0.5rem;
-  border-radius: 6px;
-  border: none;
-  margin-bottom: 1rem;
-}
-
+.event-form select,
+.event-form input,
 .event-form button {
   width: 100%;
-  padding: 0.8rem;
-  background-color: #c4e093;
-  border: none;
+  padding: 0.6rem;
+  margin-top: 0.5rem;
   border-radius: 8px;
-  font-weight: bold;
-  cursor: pointer;
-}
-.analyze-wrapper {
-  margin: 1rem;
-  background: #e7f6d9;
-  border-radius: 16px;
-  padding: 1.2rem;
-  box-shadow: 0 0 4px rgba(0,0,0,0.1);
-}
-
-.photo-label {
-  display: block;
-  background: #c4e093;
-  padding: 0.7rem;
-  text-align: center;
-  border-radius: 10px;
-  cursor: pointer;
-  margin-bottom: 1rem;
-}
-
-.photo-label input {
-  display: none;
-}
-
-.analyze-wrapper button {
-  width: 100%;
-  margin-bottom: 0.5rem;
-  padding: 0.8rem;
-  background: #b6d67e;
   border: none;
-  border-radius: 10px;
+}
+.recognition-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.recognition-buttons button {
+  background-color: #d4ecab;
+  border: 2px solid #a4c97f;
+  padding: 1rem;
+  border-radius: 12px;
+  font-size: 1.1rem;
   font-weight: bold;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.2s;
 }
 
-.result-box {
-  margin-top: 1rem;
-  background: #fff;
-  border-radius: 10px;
-  padding: 1rem;
-  text-align: center;
-  font-style: italic;
+.recognition-buttons button:hover {
+  background-color: #c2e195;
 }
-.water-box {
-  background: #e7f6d9;
-  margin: 1rem;
-  padding: 1rem;
-  border-radius: 16px;
+#water.page.active {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
-.water-box label {
+label {
+  font-weight: bold;
   display: block;
-  margin-top: 1rem;
+  margin-bottom: 0.3rem;
 }
 
-.water-box select,
-.water-box input {
+select {
   width: 100%;
   padding: 0.5rem;
   border-radius: 8px;
-  border: none;
-  margin-top: 0.3rem;
+  border: 1px solid #ccc;
+  margin-bottom: 0.5rem;
 }
 
-.water-box button {
-  width: 100%;
-  margin-top: 1rem;
-  padding: 0.8rem;
-  background: #b6d67e;
-  border: none;
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: #eaf6d5;
   border-radius: 10px;
+  padding: 0.5rem;
+}
+
+.control button {
+  background: #d3e89c;
+  border: none;
+  border-radius: 6px;
+  padding: 0.3rem 0.8rem;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.phase {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.phase label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#calcWaterBtn {
+  background: #b4e177;
+  border: none;
+  border-radius: 8px;
+  padding: 0.8rem;
   font-weight: bold;
+  font-size: 1.1rem;
+  cursor: pointer;
 }
 
 .water-result {
   margin-top: 1rem;
-  background: #fff;
+  background: #c7ed96;
   padding: 1rem;
-  border-radius: 10px;
+  border-radius: 12px;
   text-align: center;
+  font-weight: bold;
+  font-size: 1.2rem;
 }
