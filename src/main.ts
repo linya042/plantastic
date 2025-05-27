@@ -186,7 +186,98 @@ function changeValue(id: string, delta: number) {
 // === Инициализация ===
 window.addEventListener("DOMContentLoaded", () => {
   navigateTo("diagnose");
+  loadPlants();
   renderWeek(currentStartDate);
   renderMonth(selectedDate);
   updateSelectedDateLabel();
+});
+type Plant = {
+  name: string;
+  photoUrl: string;
+};
+
+let plants: Plant[] = [];
+
+function renderPlants() {
+  const container = document.getElementById("plantsContainer")!;
+  container.innerHTML = "";
+  plants.forEach((plant, index) => {
+    const card = document.createElement("div");
+    card.className = "plant-card";
+
+    const img = document.createElement("img");
+    img.src = plant.photoUrl;
+
+    const name = document.createElement("span");
+    name.textContent = plant.name;
+
+    card.appendChild(img);
+    card.appendChild(name);
+    container.appendChild(card);
+  });
+function updatePlantOptions() {
+  const select = document.getElementById("plantSelect") as HTMLSelectElement;
+  if (!select) return;
+  select.innerHTML = "";
+  plants.forEach(p => {
+    const option = document.createElement("option");
+    option.value = p.name;
+    option.textContent = p.name;
+    select.appendChild(option);
+  });
+}
+  updatePlantOptions(); // для календаря
+}
+
+function savePlants() {
+  localStorage.setItem("myPlants", JSON.stringify(plants));
+}
+
+function loadPlants() {
+  const stored = localStorage.getItem("myPlants");
+  if (stored) {
+    plants = JSON.parse(stored);
+    renderPlants();
+  }
+}
+
+// Добавить по названию
+document.getElementById("addByNameBtn")?.addEventListener("click", () => {
+  const name = prompt("Введите название растения:");
+  if (!name) return;
+
+  const plant: Plant = {
+    name,
+    photoUrl: "icons/placeholder.png" // заглушка
+  };
+  plants.push(plant);
+  savePlants();
+  renderPlants();
+});
+
+// Добавить по фото
+document.getElementById("addByPhotoBtn")?.addEventListener("click", () => {
+  const input = document.getElementById("plantPhotoInput") as HTMLInputElement;
+  input.click();
+});
+
+document.getElementById("plantPhotoInput")?.addEventListener("change", (event) => {
+  const input = event.target as HTMLInputElement;
+  if (!input.files || !input.files[0]) return;
+
+  const file = input.files[0];
+  const reader = new FileReader();
+  reader.onload = () => {
+    const name = prompt("Введите название растения:");
+    if (!name) return;
+
+    const plant: Plant = {
+      name,
+      photoUrl: reader.result as string
+    };
+    plants.push(plant);
+    savePlants();
+    renderPlants();
+  };
+  reader.readAsDataURL(file);
 });

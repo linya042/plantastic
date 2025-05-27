@@ -38,8 +38,6 @@
           <option value="Удобрение">Удобрение</option>
         </select>
         <select id="plantSelect">
-          <option value="Монстера">Монстера</option>
-          <option value="Фикус">Фикус</option>
         </select>
         <button id="addEventButton">Добавить событие</button>
       </div>
@@ -103,9 +101,14 @@
       <div id="waterResult" class="water-result"></div>
     </section>
 
-    <section id="info" class="page">
-      <h2>Профиль</h2>
-      <p>Информация о пользователе</p>
+    <section id="profile" class="page">
+      <h2>Мои растения</h2>
+      <div class="add-buttons">
+        <button id="addByPhotoBtn">Добавить по фото</button>
+        <button id="addByNameBtn">Добавить по названию</button>
+      </div>
+      <input type="file" id="plantPhotoInput" accept="image/*" style="display:none">
+      <div id="plantsContainer" class="plants-list"></div>
     </section>
   </main>
 

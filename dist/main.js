@@ -8,7 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var _a, _b, _c, _d, _e, _f, _g, _h;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
 const API_URL = "https://plantastic-backend.onrender.com";
 const daysOfWeek = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"];
 const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
@@ -188,7 +188,85 @@ function changeValue(id, delta) {
 // === Инициализация ===
 window.addEventListener("DOMContentLoaded", () => {
     navigateTo("diagnose");
+    loadPlants();
     renderWeek(currentStartDate);
     renderMonth(selectedDate);
     updateSelectedDateLabel();
+});
+let plants = [];
+function renderPlants() {
+    const container = document.getElementById("plantsContainer");
+    container.innerHTML = "";
+    plants.forEach((plant, index) => {
+        const card = document.createElement("div");
+        card.className = "plant-card";
+        const img = document.createElement("img");
+        img.src = plant.photoUrl;
+        const name = document.createElement("span");
+        name.textContent = plant.name;
+        card.appendChild(img);
+        card.appendChild(name);
+        container.appendChild(card);
+    });
+    function updatePlantOptions() {
+        const select = document.getElementById("plantSelect");
+        if (!select)
+            return;
+        select.innerHTML = "";
+        plants.forEach(p => {
+            const option = document.createElement("option");
+            option.value = p.name;
+            option.textContent = p.name;
+            select.appendChild(option);
+        });
+    }
+    updatePlantOptions(); // для календаря
+}
+function savePlants() {
+    localStorage.setItem("myPlants", JSON.stringify(plants));
+}
+function loadPlants() {
+    const stored = localStorage.getItem("myPlants");
+    if (stored) {
+        plants = JSON.parse(stored);
+        renderPlants();
+    }
+}
+// Добавить по названию
+(_j = document.getElementById("addByNameBtn")) === null || _j === void 0 ? void 0 : _j.addEventListener("click", () => {
+    const name = prompt("Введите название растения:");
+    if (!name)
+        return;
+    const plant = {
+        name,
+        photoUrl: "icons/placeholder.png" // заглушка
+    };
+    plants.push(plant);
+    savePlants();
+    renderPlants();
+});
+// Добавить по фото
+(_k = document.getElementById("addByPhotoBtn")) === null || _k === void 0 ? void 0 : _k.addEventListener("click", () => {
+    const input = document.getElementById("plantPhotoInput");
+    input.click();
+});
+(_l = document.getElementById("plantPhotoInput")) === null || _l === void 0 ? void 0 : _l.addEventListener("change", (event) => {
+    const input = event.target;
+    if (!input.files || !input.files[0])
+        return;
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = () => {
+        const name = prompt("Введите название растения:");
+        if (!name)
+            return;
+        const plant = {
+            name,
+            photoUrl: reader.result
+        };
+        plants.push(plant);
+        savePlants();
+        renderPlants();
+    };
+    reader.readAsDataURL(file);
 });

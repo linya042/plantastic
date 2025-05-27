@@ -212,3 +212,46 @@ select {
   font-weight: bold;
   font-size: 1.2rem;
 }
+.add-buttons {
+  display: flex;
+  gap: 1rem;
+  margin: 1rem 0;
+  justify-content: center;
+}
+
+.add-buttons button {
+  padding: 0.8rem 1.2rem;
+  border-radius: 12px;
+  background-color: #d9f0a7;
+  border: 1px solid #a7c670;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.plants-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.plant-card {
+  display: flex;
+  align-items: center;
+  background-color: #d7f1a7;
+  padding: 1rem;
+  border-radius: 12px;
+  gap: 1rem;
+}
+
+.plant-card img {
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  object-fit: cover;
+  background-color: #cde191;
+}
+
+.plant-card span {
+  font-size: 1rem;
+  font-weight: bold;
+}
