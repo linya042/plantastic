@@ -1,0 +1,28 @@
+# Виртуальное окружение
+Lib/
+Scripts/
+Include/
+pyvenv.cfg
+share/
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Тесты и кэш
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Логи
+*.log
+logs/
+
+# Веса модели
+classifier/classifier/data/model_weights/*
+!classifier/classifier/data/model_weights/.gitkeep
+
+# docker
+classifier/Dockerfile
+classifier/docker-compose.yml
