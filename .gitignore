@@ -1,3 +1,35 @@
+# Модуль распознавания болезней(disease)
+# Виртуальное окружение
+venv/
+Lib/
+Scripts/
+Include/
+pyvenv.cfg
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Тесты и кэш
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Логи
+*.log
+logs/
+
+# Модель
+disease/models/*
+!disease/models/.gitkeep
+
+# IDE
+.vscode/
+
+# Остальное
+*_temp*  # Например, временные файлы
+
+# Модуль распознавания сортов(classifier)
 # Виртуальное окружение
 Lib/
 Scripts/
