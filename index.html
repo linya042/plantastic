@@ -9,6 +9,13 @@
 </head>
 <body>
   <main>
+    <section id="plantEditor" class="page">
+      <h2>Редактирование информации о растении</h2>
+      <input id="editPlantName" placeholder="Название растения" />
+      <input id="editPlantPhoto" type="file" accept="image/*" />
+      <textarea id="editPlantNotes" placeholder="Описание..."></textarea>
+      <button id="savePlantChanges">Сохранить</button>
+    </section>
     <section id="diagnose" class="page active">
       <div class="calendar-widget">
         <div class="calendar-header">
@@ -41,6 +48,7 @@
         </select>
         <button id="addEventButton">Добавить событие</button>
       </div>
+      <ul id="calendarTaskList" class="task-list"></ul>
     </section>
 
     <section id="recognition" class="page">

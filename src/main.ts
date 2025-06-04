@@ -1,3 +1,73 @@
+let selectedCalendarDate: Date | null = null;
+
+
+
+function renderTasksForSelectedDate() {
+  const list = document.getElementById("calendarTaskList") as HTMLUListElement;
+  if (!list || !selectedCalendarDate) return;
+  list.innerHTML = "";
+  fetchTasksByDate(formatDate(selectedCalendarDate)).then(tasks => {
+    tasks.forEach(task => {
+      const li = document.createElement("li");
+      li.textContent = task;
+      list.appendChild(li);
+    });
+  });
+}
+async function renderCalendarTasksForDate(dateStr: string) {
+  const taskList = document.getElementById("calendarTaskList");
+  if (!taskList) return;
+
+  taskList.innerHTML = "";
+  const tasks = await fetchTasksByDate(dateStr);
+  tasks.forEach(t => {
+    const li = document.createElement("li");
+    li.textContent = t;
+    taskList.appendChild(li);
+  });
+}
+
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  const addEventButton = document.getElementById("addEventButton");
+  if (addEventButton) {
+    addEventButton.addEventListener("click", async () => {
+      if (!selectedCalendarDate) return;
+      const dateStr = formatDate(selectedCalendarDate);
+      const typeSelect = document.getElementById("eventType") as HTMLSelectElement;
+      const plantSelect = document.getElementById("plantSelect") as HTMLSelectElement;
+
+      const type = typeSelect.value;
+      const plant = plantSelect.value;
+
+      await createEvent(dateStr, type, plant);
+      await renderCalendarTasksForDate(dateStr);
+    });
+  }
+});
+async function createEvent(dateStr: string, type: string, plant: string) {
+  try {
+    const response = await fetch("https://plantastic-backend.onrender.com/tasks", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        date: dateStr,
+        text: `${type} — ${plant}`
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error("Не удалось добавить событие");
+    }
+  } catch (error) {
+    console.error("Ошибка при добавлении события:", error);
+  }
+}
+
+
 
 const API_URL = "https://plantastic-backend.onrender.com";
 const daysOfWeek = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"];
@@ -53,16 +123,33 @@ async function renderWeek(startDate: Date) {
     const div = document.createElement("div");
     div.classList.add("calendar-day");
     if (isSameDay(date, new Date())) div.classList.add("today");
-    if (tasks.length) div.innerHTML = '<div class="task-dot"></div>';
-    div.innerHTML += `<div class="weekday">${daysOfWeek[(date.getDay() + 6) % 7]}</div><div class="date">${date.getDate()}</div>`;
+    // Добавление индикатора задачи, если задачи есть
+    if (tasks.length) {
+      const dot = document.createElement("div");
+      dot.classList.add("task-dot");
+      div.appendChild(dot);
+    }
+
+    // Добавление дня недели
+    const weekday = document.createElement("div");
+    weekday.classList.add("weekday");
+    weekday.textContent = daysOfWeek[(date.getDay() + 6) % 7];
+    div.appendChild(weekday);
+
+    // Добавление числа
+    const dayNumber = document.createElement("div");
+    dayNumber.classList.add("date");
+    dayNumber.textContent = String(date.getDate());
+    div.appendChild(dayNumber);
     div.addEventListener("click", async () => {
-      const taskList = document.getElementById("weekTaskList")!;
-      taskList.innerHTML = "";
+      
+  document.querySelectorAll(".calendar-day").forEach(el => el.classList.remove("selected"));
+  div.classList.add("selected");
       const tasks = await fetchTasksByDate(dateStr);
       tasks.forEach(t => {
         const li = document.createElement("li");
         li.textContent = t;
-        taskList.appendChild(li);
+        monthSpan.appendChild(li);
       });
     });
     container.appendChild(div);
@@ -73,10 +160,12 @@ async function renderWeek(startDate: Date) {
 document.getElementById("prevWeekBtn")?.addEventListener("click", () => {
   currentStartDate.setDate(currentStartDate.getDate() - 7);
   renderWeek(currentStartDate);
+setupCalendarSelectionDelegated();
 });
 document.getElementById("nextWeekBtn")?.addEventListener("click", () => {
   currentStartDate.setDate(currentStartDate.getDate() + 7);
   renderWeek(currentStartDate);
+setupCalendarSelectionDelegated();
 });
 
 // === Календарь месяца ===
@@ -107,7 +196,15 @@ async function renderMonth(date: Date) {
     if (isSameDay(d, new Date())) cell.classList.add("today");
     if (isSameDay(d, selectedDate)) cell.classList.add("selected");
     cell.addEventListener("click", () => {
-      selectedDate = d;
+      
+  document.querySelectorAll(".calendar-cell").forEach(c => c.classList.remove("selected"));
+  cell.classList.add("selected");
+  selectedCalendarDate = new Date(cell.dataset.date!);
+  renderTasksForSelectedDate();
+  document.querySelectorAll(".calendar-cell").forEach(c => c.classList.remove("selected"));
+  cell.classList.add("selected");
+  selectedCalendarDate =new Date(cell.dataset.date!);
+  renderTasksForSelectedDate();
       updateSelectedDateLabel();
       renderMonth(selectedDate);
     });grid.appendChild(cell);
@@ -188,6 +285,7 @@ window.addEventListener("DOMContentLoaded", () => {
   navigateTo("diagnose");
   loadPlants();
   renderWeek(currentStartDate);
+setupCalendarSelectionDelegated();
   renderMonth(selectedDate);
   updateSelectedDateLabel();
 });
@@ -281,3 +379,101 @@ document.getElementById("plantPhotoInput")?.addEventListener("change", (event) =
   };
   reader.readAsDataURL(file);
 });
+
+document.querySelectorAll('.calendar-day').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.calendar-day').forEach(b => b.classList.remove('selected-day'));
+    btn.classList.add('selected-day');
+  });
+});
+
+
+
+function setupCalendarSelectionDelegated() {
+  const container = document.getElementById("calendarDays");
+  if (!container) return;
+
+  container.addEventListener("click", (e) => {
+    const target = e.target as HTMLElement;
+    if (target.classList.contains("calendar-day")) {
+      document.querySelectorAll(".calendar-day").forEach(btn => btn.classList.remove("selected-day"));
+      target.classList.add("selected-day");
+    }
+  });
+}
+
+document.getElementById("savePlantChanges")?.addEventListener("click", () => {
+  const newNotes = (document.getElementById("editPlantNotes") as HTMLTextAreaElement).value;
+  const photoFile = (document.getElementById("editPlantPhoto") as HTMLInputElement).files?.[0];
+
+  if (currentlyEditingPlantName) {
+    updatePlant(currentlyEditingPlantName, {
+      notes: newNotes,
+      photo: photoFile
+    });
+  }
+
+  showPage("garden");
+});
+
+function updatePlant(name: string, data: { notes?: string, photo?: File | null }) {
+  const plants = JSON.parse(localStorage.getItem("myPlants") || "[]");
+
+  const index = plants.findIndex((p: any) => p.name === name);
+  if (index !== -1) {
+    if (data.notes !== undefined) plants[index].notes = data.notes;
+
+    if (data.photo) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        plants[index].photoData = reader.result;
+        localStorage.setItem("myPlants", JSON.stringify(plants));
+        renderMyGarden();
+      };
+      reader.readAsDataURL(data.photo);
+    } else {
+      localStorage.setItem("myPlants", JSON.stringify(plants));
+      renderMyGarden();
+    }
+  }
+}
+
+// === [GLOBAL VAR for editing] ===
+let currentlyEditingPlantName: string | null = null;
+
+// === [PAGE SWITCHING FUNCTION] ===
+function showPage(pageId: string) {
+  document.querySelectorAll(".page").forEach(page => page.classList.remove("active"));
+  document.getElementById(pageId)?.classList.add("active");
+}
+
+// === [RENDER MY GARDEN FUNCTION] ===
+function renderMyGarden() {
+  const gardenList = document.getElementById("myPlantList");
+  if (!gardenList) return;
+
+  gardenList.innerHTML = "";
+  const plants = JSON.parse(localStorage.getItem("myPlants") || "[]");
+
+  plants.forEach((plant: any) => {
+    const li = document.createElement("li");
+    li.textContent = plant.name;
+
+    if (plant.photoData) {
+      const img = document.createElement("img");
+      img.src = plant.photoData;
+      img.alt = plant.name;
+      img.style.maxWidth = "100px";
+      li.appendChild(img);
+    }
+
+    li.addEventListener("click", () => {
+      currentlyEditingPlantName = plant.name;
+      (document.getElementById("editPlantName") as HTMLInputElement).value = plant.name;
+      (document.getElementById("editPlantNotes") as HTMLTextAreaElement).value = plant.notes || "";
+      showPage("plantEditor");
+    });
+
+    gardenList.appendChild(li);
+  });
+}
