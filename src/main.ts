@@ -1,4 +1,18 @@
-
+declare  const Telegram:{
+  WebApp:{
+    ready:()=>void;
+    expand:()=>void;
+    close:()=>void;
+    sendData:(data:string)=>void;
+    version:string;
+    initData:string;
+    initDataUnsafe:any;
+    MainButton:any;
+    BackButton:any;
+    colorScheme:string;
+    themeParams:any;
+  }
+}
 const API_URL = "https://plantastic-backend.onrender.com";
 const daysOfWeek = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"];
 const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
@@ -190,6 +204,8 @@ window.addEventListener("DOMContentLoaded", () => {
   renderWeek(currentStartDate);
   renderMonth(selectedDate);
   updateSelectedDateLabel();
+  Telegram.WebApp.ready();
+  Telegram.WebApp.expand();
 });
 type Plant = {
   name: string;

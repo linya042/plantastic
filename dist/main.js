@@ -192,6 +192,8 @@ window.addEventListener("DOMContentLoaded", () => {
     renderWeek(currentStartDate);
     renderMonth(selectedDate);
     updateSelectedDateLabel();
+    Telegram.WebApp.ready();
+    Telegram.WebApp.expand();
 });
 let plants = [];
 function renderPlants() {

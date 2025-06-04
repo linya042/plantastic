@@ -1,0 +1,21 @@
+Agrobacterium tumefaciens 
+Anthracnose 
+Bacterial Leaf Spot 
+Bacterial Soft Rot 
+Botrytis cinerea 
+Bud Rot 
+Chlorosis 
+Edema 
+Erysiphales 
+Fusarium 
+Leaf Curl 
+Mosaic Virus 
+Peronospora 
+Phoma 
+Phytophthora 
+Pucciniales 
+Pythium 
+Ralstonia solanacearum 
+Sooty mold 
+White plaque on the soil 
+healthy
