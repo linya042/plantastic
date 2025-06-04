@@ -14,6 +14,9 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+classifier/tests/ram_test.py
+classifier/tests/test_images/*
+!classifier/tests/test_images/.gitkeep
 
 # Логи
 *.log
@@ -25,4 +28,9 @@ classifier/classifier/data/model_weights/*
 
 # docker
 classifier/Dockerfile
-classifier/docker-compose.yml
+backend/Dockerfile
+docker-compose.yml
+
+#БД
+database/*
+!database/.gitkeep
