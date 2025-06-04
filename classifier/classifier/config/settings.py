@@ -28,7 +28,7 @@ ALLOWED_FORMATS: Dict[str, List[str]] = {
 }
 
 # Параметры модели
-MODEL_INPUT_SIZE = 224  # Размер входа для EfficientNetB2
+MODEL_INPUT_SIZE = 260  # Размер входа для EfficientNetB2
 MAX_IMAGE_SIZE = 2048  # Максимальный размер исходного изображения
 TOP_K = config["model"]["top_k"]  # Количество возвращаемых предсказаний
 

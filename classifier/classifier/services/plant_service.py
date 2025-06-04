@@ -11,7 +11,8 @@ class PlantService:
         self,
         model_path: Path = WEIGHT_PATH,
         class_names_path: Path = CLASS_NAMES_PATH,
-        top_k: int = TOP_K
+        top_k: int = TOP_K,
+        device: str = None
     ):
         """
         Сервис для классификации растений
@@ -23,7 +24,8 @@ class PlantService:
         """
         self.classifier = PlantClassifier(
             model_path=model_path,
-            class_names_path=class_names_path
+            class_names_path=class_names_path,
+            device = device
         )
         self.top_k = top_k
         
