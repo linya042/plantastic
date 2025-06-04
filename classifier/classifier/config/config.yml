@@ -1,0 +1,6 @@
+path:
+  weights_path: "data/model_weights/model_epoch_27.pth"
+  class_names_path: "data/model_weights/class_names.txt"
+
+model:
+  top_k: 3
