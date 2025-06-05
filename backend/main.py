@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import date, timedelta, datetime
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 
 from models import Task
 from database import SessionLocal, engine,Base, check_db_connection
@@ -182,15 +183,14 @@ async def internal_server_error(request, exc):
     return {"error": "Внутренняя ошибка сервера"}
 
 
-# Событие запуска
-@app.on_event("startup")
-async def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
     logger.info("Plantastic Backend запущен")
     if not check_db_connection():
         logger.error("Не удалось подключиться к базе данных!")
-
-
-# Событие завершения
-@app.on_event("shutdown")
-async def shutdown_event():
+    yield
+    # Shutdown
     logger.info("Plantastic Backend завершает работу")
+
+app.router.lifespan_context = lifespan
