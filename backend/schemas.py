@@ -413,3 +413,17 @@ class ListResponse(BaseModel):
     page: int = 1
     per_page: int = 50
     pages: int
+
+
+class SoilTypeBase(BaseModel):
+    name_ru: str = Field(..., description="Название типа грунта на русском")
+    name_en: Optional[str] = Field(None, description="Название типа грунта на английском")
+    description_ru: Optional[str] = Field(None, description="Описание типа грунта на русском")
+    description_en: Optional[str] = Field(None, description="Описание типа грунта на английском")
+    water_retention_coefficient: float = Field(..., ge=0.0, le=1.0, description="Коэффициент влагоемкости (от 0.0 до 1.0)")
+
+
+class SoilTypeOut(SoilTypeBase):
+    soil_type_id: int = Field(..., description="Уникальный ID типа грунта")
+
+    model_config = ConfigDict(from_attributes=True) # Важно для конвертации SQLAlchemy-объектов

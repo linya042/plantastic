@@ -1,10 +1,10 @@
-from app.models.model_loader import model, CLASS_NAMES
-from app.utils.image_utils import preprocess_image
+from disease_app.models import model, CLASS_NAMES
+from disease_app.utils import preprocess_image
 import torch
 
-def run_inference(image_path):
+def run_inference(image_data):
     """Запуск инференса и возврат топ-3 классов"""
-    input_tensor = preprocess_image(image_path)
+    input_tensor = preprocess_image(image_data)
 
     with torch.no_grad():
         output = model(input_tensor)

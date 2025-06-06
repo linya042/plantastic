@@ -4,6 +4,9 @@ from typing import Dict, List
 import os
 
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent
+print(PACKAGE_ROOT)
+print(Path(__file__).resolve().parent)
+print(Path(__file__).resolve())
 CONFIG_FILE = Path(__file__).resolve().parent / "config.yml"
 
 with open(CONFIG_FILE, "r", encoding="utf-8") as f:

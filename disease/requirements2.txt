@@ -1,0 +1,12 @@
+# Основные зависимости
+# torch==2.7.0
+# torchvision==0.22.0
+# указаны в Dockerfile - там указана установка CPU-onlu
+Pillow==11.2.1
+pillow-heif==0.22.0
+numpy==2.2.6
+
+# FastAPI и зависимости
+fastapi==0.115.12
+uvicorn[standard]>=0.12.0
+python-multipart>=0.0.5

@@ -14,6 +14,7 @@ from ..config.settings import (
 
 logger = logging.getLogger(__name__)
 
+#Глобальная переменная для сервиса
 plant_service: Optional[PlantService] = None
 
 app = APIRouter(
@@ -21,6 +22,7 @@ app = APIRouter(
     tags=["Classifier"],
 )
 
+#Инициализация сервиса при старте приложения
 async def get_plant_service() -> PlantService:
     """Получение экземпляра PlantService с ленивой инициализацией"""
     global plant_service
@@ -111,7 +113,7 @@ async def classify_plant(file: UploadFile = File(...)):
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 detail=f"Размер файла превышает {size_mb:.0f}MB. Пожалуйста, используйте изображение меньшего размера."
             )
-        
+
         if len(contents) == 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -121,10 +123,11 @@ async def classify_plant(file: UploadFile = File(...)):
         logger.info(f"Получен файл: {file.filename} ({file.content_type})")
         logger.debug(f"Размер файла: {len(contents)} bytes")
         
+
         # Получение сервиса и классификация
         service = await get_plant_service()
         try:
-            predictions = service.classify_plant(contents) # НАДО СДЕЛАТЬ ФУНКЦИЯЮ АССИНХРОННОЙ
+            predictions = service.classify_plant(contents)
             # from starlette.concurrency import run_in_threadpool
             # predictions = await run_in_threadpool(self.classifier.predict, image_data, top_k=self.top_k)
             

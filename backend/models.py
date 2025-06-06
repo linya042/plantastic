@@ -183,3 +183,14 @@ class Task(Base):
     
     def __str__(self):
         return f"Задача на {self.date}: {self.text}"
+    
+
+class SoilType(Base):
+    __tablename__ = 'soil_types'
+
+    soil_type_id = Column('soil_type_id', Integer, primary_key=True, autoincrement=True, index=True)
+    name_ru = Column('name_ru', String, unique=True, nullable=False, index=True)
+    name_en = Column('name_en', String, nullable=True)
+    description_ru = Column('description_ru', Text, nullable=True)
+    description_en = Column('description_en', Text, nullable=True)
+    water_retention_coefficient = Column('water_retention_coefficient', Float, nullable=False)

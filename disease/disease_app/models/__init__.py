@@ -1,0 +1,1 @@
+from .model_loader import model, CLASS_NAMES, device

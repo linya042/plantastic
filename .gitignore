@@ -33,6 +33,7 @@ disease/models/*
 classifier/Dockerfile
 backend/Dockerfile
 docker-compose.yml
+disease/Dockerfile
 
 #БД
 database/*
