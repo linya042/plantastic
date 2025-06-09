@@ -1,8 +1,6 @@
 from fastapi import APIRouter, File, UploadFile, HTTPException, status
-# from PIL import Image #ИЗМЕНЕНО! - удалено
-# import os #ИЗМЕНЕНО! - удалено
-# from io import BytesIO #ИЗМЕНЕНО! - удалено
-import logging  #ИЗМЕНЕНО!
+import logging
+from datetime import datetime
 
 from disease_app.services import run_inference
 from disease_app.models import model
@@ -41,7 +39,7 @@ async def health():
         }
 
 
-@router.post("/predict/", summary="Распознавание болезни по одному изображению")
+@router.post("/predict", summary="Распознавание болезни по одному изображению")
 async def predict_plant_disease(file: UploadFile = File(...)):
     """
     Отправьте изображение (JPG, PNG), и API вернёт результат.
@@ -88,9 +86,8 @@ async def predict_plant_disease(file: UploadFile = File(...)):
             "data": {
                 "predictions": result,
                 "filename": file.filename,
-                "processed_at": logger.handlers[0].formatter.formatTime(
-                    logging.LogRecord("", 0, "", 0, "", (), None)
-                ) if logger.handlers else None
+                "processed_at": datetime.now()
+                                # Было это -> logger.handlers[0].formatter.formatTime(logging.LogRecord("", 0, "", 0, "", (), None)) if logger.handlers else None
             }
         }
 

@@ -42,6 +42,37 @@ class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+# ИЗОБРАЖЕНИЯ 
+
+class PlantImageCreate(BaseModel):
+    """Схема для загрузки изображения растения"""
+    plant_id: int
+    image_url: str = Field(..., min_length=1)
+    description: Optional[str] = None
+    is_main_image: Optional[bool] = False
+
+
+class UserPlantImageCreate(BaseModel):
+    """Схема для загрузки изображения растения пользователя"""
+    user_plant_id: int
+    image_url: str = Field(..., min_length=1)
+    description: Optional[str] = None
+    is_main_image: Optional[bool] = False
+
+
+class ImageOut(BaseModel):
+    """Базовая схема для изображений"""
+    image_id: int
+    image_url: str
+    description: Optional[str] = None
+    is_main_image: Optional[bool] = False
+    # upload_date: Optional[datetime.date] = None
+    
+    # model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
+
+
 # РАСТЕНИЯ
 
 class PlantCreate(BaseModel):
@@ -109,8 +140,13 @@ class PlantOut(BaseModel):
     care_features: Optional[str] = None
     watering_frequency: Optional[str] = None
     watering_coefficient: Optional[float] = None
+
+    plant_images: List[str] = Field(default_factory=list, description="Список адресов изображений растения")
     
-    model_config = ConfigDict(from_attributes=True)
+    # model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True # Для Pydantic v2: позволяет создавать модель из ORM объекта
+        # orm_mode = True # Для Pydantic v1
 
 
 # РАСТЕНИЯ ПОЛЬЗОВАТЕЛЕЙ 
@@ -161,35 +197,6 @@ class UserPlantWithDetails(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-# ИЗОБРАЖЕНИЯ 
-
-class PlantImageCreate(BaseModel):
-    """Схема для загрузки изображения растения"""
-    plant_id: int
-    image_url: str = Field(..., min_length=1)
-    description: Optional[str] = None
-    is_main_image: Optional[bool] = False
-
-
-class UserPlantImageCreate(BaseModel):
-    """Схема для загрузки изображения растения пользователя"""
-    user_plant_id: int
-    image_url: str = Field(..., min_length=1)
-    description: Optional[str] = None
-    is_main_image: Optional[bool] = False
-
-
-class ImageOut(BaseModel):
-    """Базовая схема для изображений"""
-    image_id: int
-    image_url: str
-    description: Optional[str] = None
-    is_main_image: Optional[bool] = False
-    upload_date: Optional[datetime.date] = None
-    
-    model_config = ConfigDict(from_attributes=True)
-
-
 # БОЛЕЗНИ И СИМПТОМЫ
 
 class DiseaseCreate(BaseModel):
@@ -211,8 +218,12 @@ class DiseaseOut(BaseModel):
     symptoms_description: Optional[str] = None
     treatment: Optional[str] = None
     prevention: Optional[str] = None
-    
-    model_config = ConfigDict(from_attributes=True)
+    disease_images: List[str] = Field(default_factory=list, description="Список адресов изображений заболевания")
+
+    # model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True # Для Pydantic v2
+        # orm_mode = True # Для Pydantic v1
 
 
 class SymptomCreate(BaseModel):
@@ -229,7 +240,9 @@ class SymptomOut(BaseModel):
     symptom_name_en: Optional[str] = None
     question: Optional[str] = None
     
-    model_config = ConfigDict(from_attributes=True)
+    # model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
 
 
 class DiseaseWithSymptoms(BaseModel):
@@ -241,9 +254,13 @@ class DiseaseWithSymptoms(BaseModel):
     symptoms_description: Optional[str] = None
     treatment: Optional[str] = None
     prevention: Optional[str] = None
-    symptoms: List[SymptomOut] = []
+    # symptoms: List[SymptomOut] = []
+    disease_images: List[str] = Field(default_factory=list, description="Список адресов изображений заболевания")
+    disease_symptoms: List[str] = Field(default_factory=list, description="Список симптомов заболевания")
     
-    model_config = ConfigDict(from_attributes=True)
+    # model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True
 
 
 # НЕЙРОННЫЕ СЕТИ
@@ -264,6 +281,37 @@ class DiseaseNNClassOut(BaseModel):
     disease_id: int
     
     model_config = ConfigDict(from_attributes=True)
+
+
+# --- Схемы для предсказаний ---
+class RawPredictionItem(BaseModel):
+    class_name: str = Field(..., description="Имя класса, предсказанное моделью")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Уверенность модели (0-1)")
+
+class PredictionContent(BaseModel):
+    predictions: List[RawPredictionItem]
+    filename: str
+    processed_at: datetime.datetime = Field(..., description="Время обработки запроса")
+
+class RawClassifierResponse(BaseModel):
+    success: bool
+    data: PredictionContent
+
+
+# --- Схемы для финального ответа ---
+class PredictItem(BaseModel):
+    """Схема для схемы IdentifyResponse"""
+    item_id: int = Field(..., description="Идентификатор растения / заболевания")
+    item_name: str = Field(..., description="Название растения / заболевания")
+    confidence: float = Field(..., ge=0.0, le=100.0, description="Уверенность модели в предсказании")
+    images: List[str] = Field(default_factory=list, description="Список адресов изображений")
+
+class IdentifyResponse(BaseModel):
+    """Схема для ответов на запрос на распознавание"""
+    status: str = Field(..., example="ok", description="Статус выполнения запроса")
+    timestamp: datetime.datetime = Field(..., description="Время обработки запроса")
+    data: List[PredictItem]  = Field(..., description="Список предсказан")
+    total: int = Field(..., description="Общее количество предсказанных элементов")
 
 
 # ЗАДАЧИ

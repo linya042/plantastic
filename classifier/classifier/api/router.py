@@ -2,6 +2,7 @@ from fastapi import APIRouter, File, UploadFile, HTTPException, status
 from pathlib import Path
 import logging
 from typing import Dict, Optional
+from datetime import datetime
 from ..services.plant_service import PlantService
 from ..utils.exceptions import ImageProcessingError, ClassificationError
 from ..config.settings import (
@@ -14,15 +15,13 @@ from ..config.settings import (
 
 logger = logging.getLogger(__name__)
 
-#Глобальная переменная для сервиса
 plant_service: Optional[PlantService] = None
 
-app = APIRouter(
+router = APIRouter(
     prefix="/classifier",
     tags=["Classifier"],
 )
 
-#Инициализация сервиса при старте приложения
 async def get_plant_service() -> PlantService:
     """Получение экземпляра PlantService с ленивой инициализацией"""
     global plant_service
@@ -52,7 +51,7 @@ def is_valid_extension(filename: str) -> bool:
     return any(ext in extensions for extensions in ALLOWED_FORMATS.values())
 
 
-@app.get("/health")
+@router.get("/health")
 async def health():
     """Проверка состояния сервиса"""
     try:
@@ -71,7 +70,7 @@ async def health():
         }
 
 
-@app.post("/classify", response_model=Dict[str, object])
+@router.post("/classify", response_model=Dict[str, object])
 async def classify_plant(file: UploadFile = File(...)):
     """
     Классификация растения по изображению
@@ -113,7 +112,7 @@ async def classify_plant(file: UploadFile = File(...)):
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 detail=f"Размер файла превышает {size_mb:.0f}MB. Пожалуйста, используйте изображение меньшего размера."
             )
-
+        
         if len(contents) == 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -123,11 +122,10 @@ async def classify_plant(file: UploadFile = File(...)):
         logger.info(f"Получен файл: {file.filename} ({file.content_type})")
         logger.debug(f"Размер файла: {len(contents)} bytes")
         
-
         # Получение сервиса и классификация
         service = await get_plant_service()
         try:
-            predictions = service.classify_plant(contents)
+            predictions = service.classify_plant(contents) # НАДО СДЕЛАТЬ ФУНКЦИЯЮ АССИНХРОННОЙ
             # from starlette.concurrency import run_in_threadpool
             # predictions = await run_in_threadpool(self.classifier.predict, image_data, top_k=self.top_k)
             
@@ -139,8 +137,8 @@ async def classify_plant(file: UploadFile = File(...)):
             
             formatted_predictions = [
                 {
-                    "name": pred["class_name"].replace("_", " ").title(),
-                    "confidence": round(pred["confidence"] * 100, 2)
+                    "class_name": pred["class_name"],
+                    "confidence": round(pred["confidence"], 4)
                 }
                 for pred in predictions
             ]
@@ -150,10 +148,9 @@ async def classify_plant(file: UploadFile = File(...)):
                 "data": {
                     "predictions": formatted_predictions,
                     "filename": file.filename,
-                    "processed_at": logger.handlers[0].formatter.formatTime(
-                        logging.LogRecord("", 0, "", 0, "", (), None)
-                    ) if logger.handlers else None
+                    "processed_at": datetime.now()
                 }
+                                    # Было это -> logger.handlers[0].formatter.formatTime(logging.LogRecord("", 0, "", 0, "", (), None) if logger.handlers else None
             }
             
         except ImageProcessingError as e:
@@ -185,7 +182,7 @@ async def classify_plant(file: UploadFile = File(...)):
     finally:
         await file.close()
 
-@app.on_event("shutdown")
+@router.on_event("shutdown")
 async def shutdown_event():
     """Освобождение ресурсов при завершении работы"""
     global plant_service

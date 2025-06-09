@@ -1,7 +1,9 @@
 from sqlalchemy import Column, Integer, String, Date, DateTime, Text, Float, ForeignKey, Boolean
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
-from database import Base
+from sqlalchemy.orm import relationship, declarative_base
+
+
+Base = declarative_base()
 
 
 class User(Base):
@@ -44,6 +46,19 @@ class Plant(Base):
     plant_images = relationship("PlantImage", back_populates="plant")
     user_plants = relationship("UserPlant", back_populates="plant")
     nn_classes = relationship("PlantNNClass", back_populates="plant")
+
+
+class PlantImage(Base):
+    __tablename__ = 'plant_images'
+
+    image_id = Column('image_id', Integer, primary_key=True, index=True)
+    plant_id = Column('plant_id', Integer, ForeignKey('plants.plant_id'), index=True)
+    image_url = Column('image_url', String)
+    description = Column('description', String)
+    is_main_image = Column('is_main_image', Boolean)
+    source_url = Column('source_url', String)
+
+    plant = relationship("Plant", back_populates="plant_images")
 
 
 class UserPlant(Base):

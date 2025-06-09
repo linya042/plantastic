@@ -1,4 +1,4 @@
 """
 API endpoints for plant classification
 """
-from .router import app
+from .router import router
