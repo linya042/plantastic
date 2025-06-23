@@ -47,10 +47,8 @@ plant_detector = PlantDetector()
 # Функция для создания базы данных и таблиц
 async def create_db_and_tables():
     logger.info("Попытка создания таблиц базы данных...")
-    # Используем 'engine.run_sync' для выполнения синхронной операции DDL
-    # в асинхронном контексте.
-    # 'async with engine.begin() as conn' получает асинхронное соединение
-    # и начинает транзакцию.
+    # Используем 'engine.run_sync' для выполнения синхронной операции DDL в асинхронном контексте.
+    # 'async with engine.begin() as conn' получает асинхронное соединение и начинает транзакцию.
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     logger.info("Таблицы базы данных успешно созданы (или уже существуют).")
@@ -95,7 +93,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     logger.error(f"Ошибка валидации запроса: {details}")
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={"detail": details}, # Возвращение полных деталей ошибок валидации может раскрыть внутреннюю структуру API.
+        content={"detail": details},
     )
 
 @app.exception_handler(ValidationError)
@@ -104,7 +102,6 @@ async def pydantic_validation_exception_handler(request: Request, exc: Validatio
     logger.error(f"Ошибка валидации Pydantic: {details}")
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        # content={"detail": details}, # Возвращение полных деталей ошибок валидации может раскрыть внутреннюю структуру API.
     )
 
 
@@ -199,7 +196,6 @@ async def telegram_auth(
     logger.info(f"InitData валидирована для пользователя с Telegram ID: {user_id}")
 
     try:
-        # Проверяем, существует ли пользователь в БД
         existing_user = await get_user_by_telegram_id(db, user_id)
         
         if existing_user is None:
@@ -240,7 +236,6 @@ async def telegram_auth(
             )
     
     except HTTPException:
-        # Перебрасываем HTTP исключения как есть
         raise
     
     except Exception as e:
@@ -499,8 +494,7 @@ async def identify_plant(file: UploadFile = File(...), db: AsyncSession = Depend
         # Собираем все class_label из предсказаний для одного запроса к БД
         class_labels_to_fetch = [pred.class_name for pred in raw_classifier_data.data.predictions]
 
-        # Выполняем ОДИН асинхронный запрос к базе данных
-        # (Если список пуст, функция вернетй словарь)
+        # Выполняем ОДИН асинхронный запрос к базе данных (Если список пуст, функция вернет пустой словарь)
         plants_full_info_map = await get_plant_from_db_by_nn(db, class_labels_to_fetch)
 
         processed_predictions: List[PredictItem] = []
@@ -520,19 +514,17 @@ async def identify_plant(file: UploadFile = File(...), db: AsyncSession = Depend
                         )
                     )
             else:
-                # Если растение не найдено в БД, можно добавить заглушку или пропустить
                 logger.warning(f"Не найдено растения для класса: {class_name}. Добавлено как 'Неизвестное растение ...'")
-                # Или добавить элемент с "неизвестным" растением:
                 processed_predictions.append(
                     PredictItem(
-                        item_id=0, # Или другое значение для неизвестного
+                        item_id=0,
                         item_name=f"Неизвестное растение, класс: {class_name}",
-                        confidence=confidence, # Сохраняем уверенность модели
+                        confidence=confidence,
                         images=[]
                     )
                 )
 
-        # 4. Формируем и возвращаем окончательный ответ
+        # Формируем и возвращаем окончательный ответ
         response_data_object = IdentifyResponse(
                                     status="ok",
                                     data=processed_predictions,
@@ -883,7 +875,7 @@ async def update_user_plant_info(
 async def delete_user_plant(
     user_id: int = Path(..., description="ID пользователя-владельца растения"),
     user_plant_id: int = Path(..., description="ID растения пользователя для удаления"),
-    # hard_delete: bool = Query(default=False, description="Если True, выполняет жесткое удаление из БД. Иначе - мягкое (рекомендуется)."),
+    # hard_delete: bool = Query(default=False, description=""), # Если True, выполняет жесткое удаление из БД. Иначе - мягкое (рекомендуется).
     db: AsyncSession = Depends(get_async_db)
 ):
     """
@@ -922,7 +914,6 @@ async def delete_user_plant(
     return MessageResponse(message=message, success=True)
 
 
-# Добавить задачу
 @app.post(
     "/users/{user_id}/tasks/",
     response_model=TaskOut,
@@ -970,7 +961,6 @@ async def add_task(
         )
 
 
-# Получить задачи на определенный день
 @app.get(
     "/users/{user_id}/tasks/daily/",
     response_model=List[TaskOut],
@@ -998,11 +988,10 @@ async def get_tasks_for_day(
         )
 
 
-# Получить задачи на неделю (от сегодня)
 @app.get(
     "/users/{user_id}/tasks/weekly/",
     response_model=List[TaskOut],
-    summary="Получить задачи на неделю"
+    summary="Получить задачи на неделю (от сегодня)"
 )
 async def get_tasks_for_week_endpoint(
     user_id: int = Path(..., description="ID пользователя-владельца задач"),
@@ -1153,11 +1142,10 @@ async def delete_task_endpoint(
         )
 
 
-# Получить все задачи пользователя с пагинацией
 @app.get(
     "/users/{user_id}/tasks/",
     response_model=TaskList,
-    summary="Получить список задач для пользователя"
+    summary="Получить список задач для пользователя с пагинацией"
 )
 async def get_all_tasks_paginated(
     user_id: int = Path(..., description="ID пользователя, для которого запрашиваются задачи"),
@@ -1189,10 +1177,10 @@ async def get_all_tasks_paginated(
         )
 
 
-# Отметить задачу как выполненную
 @app.post(
     "/users/{user_id}/tasks/{task_id}/complete",
-    response_model=TaskOut
+    response_model=TaskOut, 
+    summary='Отметить задачу как выполненную'
 )
 async def complete_task_endpoint(
     user_id: int = Path(..., description="ID пользователя для проверки прав доступа"),
@@ -1229,7 +1217,6 @@ async def complete_task_endpoint(
         )
 
 
-# Отменить выполнение задачи
 @app.post(
     "/users/{user_id}/tasks/{task_id}/uncomplete",
     response_model=TaskOut,

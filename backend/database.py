@@ -196,7 +196,7 @@ async def get_plant_from_db_by_nn(db: AsyncSession, class_names: List[str]) -> O
     
     try:
         # Строим асинхронный запрос для получения PlantNNClass объектов
-        # и связанных с ними объектов Plant (используя relationship)
+        # и связанных с ними объектов Plant
         stmt = select(PlantNNClass).options(
             selectinload(PlantNNClass.plant_nn_classes_images)
         ).where(
@@ -370,10 +370,9 @@ async def get_diseases_from_db_by_nn(db: AsyncSession, class_labels: List[str]) 
 
         diseases_info_map: Dict[str, Dict[str, Any]] = {}
         for nn_class in nn_classes_found:
-            if nn_class.disease: # Убедимся, что связанное заболевание найдено
+            if nn_class.disease:
                 disease_data = nn_class.disease
 
-                # Подготавливаем список адресов изображений
                 images_urls = [
                     img.image_url 
                     for img in sorted(disease_data.disease_images, key=lambda x: not x.is_main_image)
@@ -586,7 +585,7 @@ async def delete_user_plant_soft(db: AsyncSession, user_plant: UserPlant) -> Opt
             update(Task)
             .values(deleted=True)
             .execution_options(synchronize_session=False)
-            .where(Task.user_plant_id == user_plant.user_plant_id) # Рекомендуется для массовых обновлений
+            .where(Task.user_plant_id == user_plant.user_plant_id)
         )
         result = await db.execute(task_update_stmt)
         logger.info(f"Для мягко удаляемого растения {user_plant.user_plant_id} было мягко удалено {result.rowcount} задач.")
@@ -745,9 +744,9 @@ async def get_all_user_tasks_paginated(
     user_id: int, 
     page: int = 1, 
     per_page: int = 50,
-    is_completed: Optional[bool] = None, # Фильтр по статусу выполнения
-    user_plant_id: Optional[int] = None # Фильтр по растению
-) -> Dict[str, Any]: # Возвращаем словарь для пагинации
+    is_completed: Optional[bool] = None,
+    user_plant_id: Optional[int] = None
+) -> Dict[str, Any]:
     """Получает все задачи пользователя с пагинацией и фильтрацией."""
     try:
         offset = (page - 1) * per_page
