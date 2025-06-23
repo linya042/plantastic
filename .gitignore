@@ -6,6 +6,7 @@ pyvenv.cfg
 share/
 .vscode/
 venv/
+.env
 
 # Python
 __pycache__/
@@ -28,6 +29,8 @@ classifier/classifier/data/model_weights/*
 !classifier/classifier/data/model_weights/.gitkeep
 disease/models/*
 !disease/models/.gitkeep
+backend/detector_weights/*
+!backend/detector_weights/.gitkeep
 
 # docker
 classifier/Dockerfile

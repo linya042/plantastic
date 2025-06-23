@@ -1,8 +1,11 @@
 from PIL import Image
+from pillow_heif import register_heif_opener
 from torchvision import transforms
 from disease_app.models import device
 from io import BytesIO
 
+
+register_heif_opener()
 
 transform = transforms.Compose([
     transforms.Resize(256),

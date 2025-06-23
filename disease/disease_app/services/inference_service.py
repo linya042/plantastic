@@ -17,8 +17,8 @@ def run_inference(image_data):
     results = []
     for prob, idx in zip(top_probs, top_indices):
         results.append({
-            "class_name": CLASS_NAMES[idx.item()].replace("_", " ").title(),
-            "confidence": round(prob.item(), 4) #f"{prob.item() * 100:.2f}%"
+            "class_name": CLASS_NAMES[idx.item()],
+            "confidence": float(prob.item())
         })
 
     return results

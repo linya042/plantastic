@@ -4,9 +4,6 @@ from typing import Dict, List
 import os
 
 PACKAGE_ROOT = Path(__file__).resolve().parent.parent
-print(PACKAGE_ROOT)
-print(Path(__file__).resolve().parent)
-print(Path(__file__).resolve())
 CONFIG_FILE = Path(__file__).resolve().parent / "config.yml"
 
 with open(CONFIG_FILE, "r", encoding="utf-8") as f:
@@ -22,7 +19,7 @@ if not CLASS_NAMES_PATH.exists():
     raise FileNotFoundError(f"Файл с именами классов не найден: {CLASS_NAMES_PATH}")
 
 # Параметры изображений
-MAX_FILE_SIZE = 10 * 1024 * 1024
+MAX_FILE_SIZE = 20 * 1024 * 1024
 ALLOWED_FORMATS: Dict[str, List[str]] = {
     'image/jpeg': ['.jpg', '.jpeg'],
     'image/png': ['.png'],
