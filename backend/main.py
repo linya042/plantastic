@@ -4,45 +4,65 @@ from fastapi import (FastAPI, Depends, HTTPException, Query, UploadFile,
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
 from pydantic_core import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import selectinload
 from sqlalchemy import select, func, or_
-from datetime import date
+from datetime import date, timedelta
 from typing import List, Dict, Optional, Any
 import requests
 import os
 from contextlib import asynccontextmanager
+import hashlib
+import re
 
 from plant_detector.plant_detector import PlantDetector
-from models import Task, UserPlant, Base, SoilType, Plant, PlantNNClass, TaskType
-from schemas import (MessageResponse, UserOut, TelegramInitData, AuthResponse, PlantOut, DiseaseWithSymptoms, 
-                     TaskCreate, TaskUpdate, TaskOut, HealthResponse, 
-                     PredictItem, IdentifyResponse, RawClassifierResponse,
-                     IdentifyResponse, TaskList, UserPlantOut, UserPlantCreate,
-                     UserPlantWithDetails, UserPlantUpdate, SoilTypeOut,
-                     PlantOutForSearch, VarietyOutForSearch, TaskTypeOut, GenusWateringCoefficient)
+from models import Task, UserPlant, Base, SoilType, Plant, PlantNNClass, TaskType, PlantImage
+from schemas import (MessageResponse, UserOut, TelegramInitData, AuthResponse, 
+                     PlantOut, DiseaseWithSymptoms, TaskCreate, TaskUpdate, 
+                     TaskOut, HealthResponse, PredictItem, IdentifyResponse, 
+                     RawClassifierResponse, IdentifyResponse, TaskList, UserPlantOut,
+                     UserPlantCreate, UserPlantWithDetails, UserPlantUpdate, 
+                     SoilTypeOut, PlantOutForSearch, VarietyOutForSearch, TaskTypeOut,
+                     GenusWateringCoefficient, TasksByDate
+                     )
 from database import (engine, check_db_connection, get_async_db,
                       get_user_by_telegram_id, tg_data_to_user_create, create_new_user,
                       update_user_activity, get_plant_by_id, get_disease_by_id,
                       get_plant_from_db_by_nn, get_diseases_from_db_by_nn,
                       create_user_plant, get_user_plant_by_id_and_user_id,
                       update_user_plant, delete_user_plant_soft, create_task,
-                      get_tasks_for_date, get_tasks_for_week, get_task_by_id_and_user_id,
+                      get_tasks_for_date, get_tasks_grouped_by_date, get_task_by_id_and_user_id,
                       update_task, delete_task_hard, get_all_user_tasks_paginated,
                       mark_task_completed, unmark_task_completed, get_plant_by_variety
                       )
 from telegram_validation import TelegramDataValidator
 
+LOG_DIR = "logs"
+LOG_FILE = os.path.join(LOG_DIR, "app.log")
+
+os.makedirs(LOG_DIR, exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(LOG_FILE, encoding='utf-8'),
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 
 telegram_validator: TelegramDataValidator = None
 plant_detector = PlantDetector()
+security = HTTPBearer()
 
 # Функция для создания базы данных и таблиц
 async def create_db_and_tables():
@@ -76,6 +96,9 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -105,6 +128,82 @@ async def pydantic_validation_exception_handler(request: Request, exc: Validatio
     )
 
 
+@app.middleware("http")
+async def verify_jwt_middleware(request: Request, call_next):
+    """
+    Промежуточное ПО для проверки JWT токена во всех запросах,
+    кроме эндпоинта аутентификации.
+    """
+    # Эндпоинт аутентификации /auth разрешен без проверки JWT
+    # Эндпоинты, разрешенные без проверки JWT
+    allowed_paths = [
+        "/auth", 
+        "/health", 
+        "/", 
+        "/soil_types/", 
+        "/task-types/", 
+        "/user", 
+        "/genus/", 
+        "/variety-search/",
+        "/plants-search/",
+        "/plants/",
+        "/plants/{plant_id}",
+        "/plants-by-variety/{variety_id}",
+        "/get_disease",
+        "/get_disease/{disease_id}",
+        "/identify_plant",
+        "/identify_disease"
+    ]
+
+    is_allowed = False
+    for path in allowed_paths:
+        if "{" in path and "}" in path: # Если путь содержит параметры
+            # Создаем шаблон для регулярного выражения, заменяя {param} на [^/]+
+            regex_path = path.replace("{", "(?P<").replace("}", ">[^/]+)")
+            if re.match(f"^{regex_path}$", request.url.path):
+                is_allowed = True
+                break
+        elif request.url.path == path: # Для точных совпадений
+            is_allowed = True
+            break
+    
+    if is_allowed:
+        response = await call_next(request)
+        return response
+    
+    # Для всех остальных эндпоинтов требуем JWT токен
+    auth_header = request.headers.get("Authorization")
+    
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Отсутствует или неверный заголовок авторизации Bearer.")
+    
+    token = auth_header.split(" ")[1]
+    
+    try:
+        # Пытаемся верифицировать JWT токен, используя метод экземпляра telegram_validator
+        telegram_validator.verify_jwt_token(token)
+    except HTTPException as e:
+        # Перехватываем HTTPException, выброшенные verify_jwt_token
+        raise e
+    except Exception as e:
+        # Для любых других неожиданных ошибок при верификации токена
+        raise HTTPException(status_code=500, detail=f"Ошибка при проверке токена в middleware: {str(e)}")
+    
+    # Продолжаем обработку запроса
+    response = await call_next(request)
+    return response
+
+
+# --- Dependency для получения текущего пользователя из JWT ---
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """
+    Извлекает JWT токен из заголовка Authorization и верифицирует его.
+    Возвращает данные пользователя, если токен действителен.
+    """
+    token = credentials.credentials
+    return telegram_validator.verify_jwt_token(token)
+
+
 @app.get("/")
 async def root():
     """Корневой эндпоинт"""
@@ -125,44 +224,46 @@ async def health_check(db: AsyncSession = Depends(get_async_db)):
     )
 
 
-async def validate_telegram_init_data(init_data: str) -> Optional[Dict[str, Any]]:
-    """
-    Валидирует initData от Telegram и возвращает данные пользователя.
+# async def validate_telegram_init_data(init_data: str) -> Optional[Dict[str, Any]]:
+#     """
+#     Валидирует initData от Telegram и возвращает данные пользователя.
     
-    Args:
-        init_data: Строка initData от Telegram WebApp
+#     Args:
+#         init_data: Строка initData от Telegram WebApp
         
-    Returns:
-        Данные пользователя если валидация прошла успешно, None - если нет
-    """
-    logger.info("Валидация initData от Telegram")
+#     Returns:
+#         Данные пользователя если валидация прошла успешно, None - если нет
+#     """
+#     logger.info("Валидация initData от Telegram")
 
-    if not init_data or not init_data.strip():
-        logger.warning("Получена пустая строка initData")
-        return None
+#     if not init_data or not init_data.strip():
+#         logger.warning("Получена пустая строка initData")
+#         return None
     
-    try:
-        validated_data = telegram_validator.validate_init_data(init_data)
+#     try:
+#         validated_data = telegram_validator.validate_init_data(init_data)
     
-        if validated_data:
-            user_id = validated_data.get('id')
-            if not isinstance(user_id, int) or user_id <= 0:
-                logger.warning(f"Невалидный user_id: {user_id}")
-                return None
+#         if validated_data:
+#             user_id = validated_data.get('id')
+#             if not isinstance(user_id, int) or user_id <= 0:
+#                 logger.warning(f"Невалидный user_id: {user_id}")
+#                 return None
                 
-            logger.info(f"InitData успешно валидирована для пользователя {user_id}")
-            return validated_data
-        else:
-            logger.warning("Валидация initData не прошла")
-            return None
+#             logger.info(f"InitData успешно валидирована для пользователя {user_id}")
+#             return validated_data
+#         else:
+#             logger.warning("Валидация initData не прошла")
+#             return None
             
-    except Exception as e:
-        logger.error(f"Ошибка при валидации initData: {e}", exc_info=True)
-        return None
+#     except Exception as e:
+#         logger.error(f"Ошибка при валидации initData: {e}", exc_info=True)
+#         return None
     
 
 @app.post("/auth", response_model=AuthResponse, summary="Авторизация пользователя через Telegram")
+@limiter.limit("5/minute")
 async def telegram_auth(
+    request: Request,
     init_data: TelegramInitData,
     db: AsyncSession = Depends(get_async_db)
 ):
@@ -183,25 +284,43 @@ async def telegram_auth(
     Returns:
         Ответ с результатом авторизации и данными пользователя
     """
+    logger.info("Запрос авторизации через Telegram.")
 
-    validated_user_data = await validate_telegram_init_data(init_data.initData)
+    try:
+        # Используем метод telegram_validator.validate_init_data
+        validated_user_data = telegram_validator.validate_init_data(init_data.initData)
+    except HTTPException as e: # Перехватываем HTTPException, выброшенные из validate_init_data
+        logger.warning(f"Валидация initData не прошла: {e.detail}")
+        raise e # Перебрасываем HTTPException
+    except Exception as e:
+        logger.warning(f"Неожиданная ошибка при валидации initData: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Внутренняя ошибка сервера при валидации данных: {e}"
+        )
 
-    if validated_user_data is None:
-        logger.warning("Валидация initData не прошла - отказ в авторизации")
+    if validated_user_data is None: # Хотя validate_init_data теперь всегда выбрасывает исключение при неудаче, оставляем для безопасности
+        logger.warning("Валидация initData вернула None - отказ в авторизации.")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Невалидные данные авторизации от Telegram"
         )
-    user_id = validated_user_data['id']
+    
+    user_id = validated_user_data.get('id')
+    if not isinstance(user_id, int) or user_id <= 0:
+        logger.warning(f"Невалидный user_id в проверенных данных: {user_id}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Некорректные данные пользователя из Telegram"
+        )
+
     logger.info(f"InitData валидирована для пользователя с Telegram ID: {user_id}")
 
     try:
         existing_user = await get_user_by_telegram_id(db, user_id)
         
         if existing_user is None:
-            # Пользователь не найден - создаем нового
             logger.info(f"Пользователь с ID {user_id} не найден. Создаем нового пользователя.")
-            
             user_create_data = tg_data_to_user_create(validated_user_data)
             new_user = await create_new_user(db, user_create_data)
             
@@ -211,33 +330,34 @@ async def telegram_auth(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="Ошибка при создании пользователя"
                 )
-            
-            logger.info(f"Новый пользователь с ID {user_id} успешно создан")
-            return AuthResponse(
-                success=True,
-                message="Новый пользователь успешно зарегистрирован",
-                is_new_user=True,
-                user_data=UserOut.model_validate(new_user)
-            )
+            user_for_token = validated_user_data
+            returned_user_data = UserOut.model_validate(new_user)
+            is_new = True
+            message_text = "Новый пользователь успешно зарегистрирован"
             
         else:
-            # Пользователь найден - обновляем активность и загружаем данные
             logger.info(f"Пользователь с ID {user_id} найден. Обновляем данные.")
-            
-            # Обновляем дату последней активности
             await update_user_activity(db, existing_user)
+            user_for_token = validated_user_data
+            returned_user_data = UserOut.model_validate(existing_user)
+            is_new = False
+            message_text = "Пользователь успешно авторизован"
+        
+        # Создаем JWT токен, используя метод telegram_validator
+        access_token = telegram_validator.create_jwt_token(user_for_token)
+        
+        logger.info(f"Пользователь с ID {user_id} успешно авторизован. Токен выдан.")
+        return AuthResponse(
+            success=True,
+            message=message_text,
+            is_new_user=is_new,
+            user_data=returned_user_data,
+            access_token=access_token, # Возвращаем JWT токен
+            token_type="bearer"
+        )
             
-            logger.info(f"Пользователь с ID {user_id} успешно авторизован")
-            return AuthResponse(
-                success=True,
-                message="Пользователь успешно авторизован",
-                is_new_user=False,
-                user_data=UserOut.model_validate(existing_user)
-            )
-    
     except HTTPException:
         raise
-    
     except Exception as e:
         logger.error(f"Неожиданная ошибка при авторизации пользователя {user_id}: {e}", exc_info=True)
         raise HTTPException(
@@ -254,7 +374,8 @@ async def get_user():
 @app.get("/users/{user_id}", response_model=UserOut, summary="Получить информацию о пользователе")
 async def get_user_info(
     user_id: int,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Получить полную информацию о пользователе по его Telegram ID.
@@ -266,6 +387,9 @@ async def get_user_info(
     Returns:
         Информация о пользователе
     """
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Доступ запрещен. Вы можете просматривать только свою информацию.")
+
     logger.info(f"Запрос информации о пользователе с ID: {user_id}")
     
     user = await get_user_by_telegram_id(db, user_id)
@@ -290,31 +414,56 @@ async def get_plants_search(
     db: AsyncSession = Depends(get_async_db)
 ):
     logger.info(f"Запрос краткой информации о растениях. Поиск по строке: {search}.")
-    query = select(Plant)
-
-    if search:
-        search_variations = [
-            f"%{search}%",
-            f"%{search.lower()}%", 
-            f"%{search.upper()}%",
-            f"%{search.capitalize()}%"
-        ]
-        
-        conditions = []
-        for pattern in search_variations:
-            conditions.extend([
-                Plant.scientific_name.like(pattern),
-                Plant.common_name_ru.like(pattern),
-                Plant.synonyms.like(pattern)
-            ])
-        
-        query = query.filter(or_(*conditions))
 
     try:
-        result = await db.execute(query)
-        plants_detail = result.scalars().all()
-        logger.info(f"Найдено {len(plants_detail)} растений с краткой информацией.")
-        return plants_detail
+        plant_query = select(Plant)
+
+        if search:
+            search_variations = [
+                f"%{search}%",
+                f"%{search.lower()}%", 
+                f"%{search.upper()}%",
+                f"%{search.capitalize()}%"
+            ]
+            
+            conditions = []
+            for pattern in search_variations:
+                conditions.extend([
+                    Plant.scientific_name.like(pattern),
+                    Plant.common_name_ru.like(pattern),
+                    Plant.synonyms.like(pattern)
+                ])
+            
+            plant_query = plant_query.filter(or_(*conditions))
+
+        plant_result = await db.execute(plant_query)
+        plants = plant_result.scalars().all()
+        
+        plants_with_images = []
+        for plant in plants:
+            image_query = select(PlantImage.image_url).join(
+                PlantNNClass, PlantImage.plant_nn_classes_id == PlantNNClass.class_id
+            ).where(
+                PlantNNClass.plant_id == plant.plant_id
+            ).order_by(
+                PlantImage.is_main_image.desc(),
+                PlantImage.image_id.asc()
+            ).limit(1)
+            
+            image_result = await db.execute(image_query)
+            image_url = image_result.scalar_one_or_none()
+            
+            plant_data = {
+                "plant_id": plant.plant_id,
+                "scientific_name": plant.scientific_name,
+                "common_name_ru": plant.common_name_ru,
+                "synonyms": plant.synonyms,
+                "representative_image": image_url
+            }
+            plants_with_images.append(plant_data)
+        
+        logger.info(f"Найдено {len(plants_with_images)} растений с краткой информацией.")
+        return plants_with_images
     
     except SQLAlchemyError as e:
         logger.error(f"SQLAlchemyError при поиске / получении списка растений с краткой информацией: {e}", exc_info=True)
@@ -398,7 +547,10 @@ async def get_plants_detail(
 
 
 @app.get("/plants/{plant_id}", response_model=PlantOut, summary="Получить полную информацию о растении по ID")
-async def get_plant_details(plant_id: int, db: AsyncSession = Depends(get_async_db)):
+async def get_plant_details(
+    plant_id: int, 
+    db: AsyncSession = Depends(get_async_db)
+    ):
     """
     Получить полную информацию о растении по его ID.
     """
@@ -414,7 +566,10 @@ async def get_plant_details(plant_id: int, db: AsyncSession = Depends(get_async_
 
 
 @app.get("/plants-by-variety/{variety_id}", response_model=PlantOut, summary="Получить полную информацию о виде растении по ID сорта растения")
-async def get_plant_by_variety_endpoint(variety_id: int, db: AsyncSession = Depends(get_async_db)):
+async def get_plant_by_variety_endpoint(
+    variety_id: int, 
+    db: AsyncSession = Depends(get_async_db)
+):
     """
     Получить полную информацию о виде растении по ID сорта растения.
     """
@@ -472,7 +627,12 @@ async def get_variety_search(
 
 
 @app.post("/identify_plant", response_model=IdentifyResponse,  summary="Идентификация растения по изображению")
-async def identify_plant(file: UploadFile = File(...), db: AsyncSession = Depends(get_async_db)):
+@limiter.limit("10/minute")
+async def identify_plant(
+    request: Request,
+    file: UploadFile = File(...), 
+    db: AsyncSession = Depends(get_async_db)
+):
     
     try:
         contents = await file.read()
@@ -551,7 +711,10 @@ async def get_disease():
 
 
 @app.get("/get_disease/{disease_id}", response_model=DiseaseWithSymptoms, summary="Получить полную информацию о заболевании по ID")
-async def get_disease_details(disease_id: int, db: AsyncSession = Depends(get_async_db)):
+async def get_disease_details(
+    disease_id: int, 
+    db: AsyncSession = Depends(get_async_db),
+):
     logger.info(f"Запрос информации о заболевании с ID: {disease_id}")
     disease_info = await get_disease_by_id(db, disease_id)
     
@@ -564,7 +727,12 @@ async def get_disease_details(disease_id: int, db: AsyncSession = Depends(get_as
 
 
 @app.post("/identify_disease", response_model=IdentifyResponse, summary="Идентификация заболевания по изображению")
-async def identify_disease(file: UploadFile = File(...), db: AsyncSession = Depends(get_async_db)):
+@limiter.limit("10/minute")
+async def identify_disease(
+    request: Request,
+    file: UploadFile = File(...), 
+    db: AsyncSession = Depends(get_async_db)
+):
     try:
         contents = await file.read()
         if not plant_detector.predict(contents):
@@ -643,7 +811,8 @@ async def identify_disease(file: UploadFile = File(...), db: AsyncSession = Depe
 async def add_user_plant(
     user_id: int = Path(..., description="ID пользователя, которому добавляется растение"),
     plant_data: UserPlantCreate = Body(...),
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Добавляет новое растение в коллекцию пользователя.
@@ -660,6 +829,9 @@ async def add_user_plant(
         HTTPException 404: Если пользователь, растение или тип грунта не найдены.
         HTTPException 500: При внутренней ошибке сервера.
     """
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Доступ запрещен. Вы можете добавлять растения только себе.")
+
     logger.info(f"Получен запрос на добавление растения для пользователя {user_id}: {plant_data.model_dump_json(exclude='image_data_uri')}")
     
     new_plant = await create_user_plant(db, user_id, plant_data)
@@ -698,7 +870,8 @@ async def add_user_plant(
 async def get_user_plants_list(
     user_id: int = Path(..., description="ID пользователя, чьи растения нужно получить"),
     db: AsyncSession = Depends(get_async_db),
-    include_deleted: bool = Query(default=False, description="Включить мягко удаленные растения в список")
+    include_deleted: bool = Query(default=False, description="Включить мягко удаленные растения в список"),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Получает список всех растений, принадлежащих пользователю.
@@ -714,6 +887,9 @@ async def get_user_plants_list(
     Raises:
         HTTPException 404: Если пользователь не найден.
     """
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Доступ запрещен. Вы можете просматривать только свои растения.")
+
     logger.info(f"Запрос списка растений для пользователя {user_id}. Включать удаленные: {include_deleted}")
     
     # Проверяем существование пользователя
@@ -757,7 +933,8 @@ async def get_user_plants_list(
 async def get_user_plant_details(
     user_id: int = Path(..., description="ID пользователя-владельца растения"),
     user_plant_id: int = Path(..., description="ID конкретного растения пользователя"),
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Получает детальную информацию о конкретном растении пользователя, включая данные из справочников (Plant, SoilType).
@@ -774,6 +951,9 @@ async def get_user_plant_details(
         HTTPException 404: Если растение не найдено или принадлежит другому пользователю.
         HTTPException 500: При внутренней ошибке сервера.
     """
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Доступ запрещен. Вы можете просматривать только свои растения.")
+
     logger.info(f"Запрос детальной информации о растении user_plant_id={user_plant_id} пользователя {user_id}")
     
     # Загружаем UserPlant с связанными объектами Plant и SoilType
@@ -814,7 +994,8 @@ async def update_user_plant_info(
     user_id: int = Path(..., description="ID пользователя-владельца растения"),
     user_plant_id: int = Path(..., description="ID растения пользователя для обновления"),
     plant_data: UserPlantUpdate = Body(...),
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Обновляет информацию о конкретном растении пользователя.
@@ -832,6 +1013,9 @@ async def update_user_plant_info(
         HTTPException 404: Если растение не найдено, принадлежит другому пользователю, или связанный тип грунта не найден.
         HTTPException 500: При внутренней ошибке сервера.
     """
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Доступ запрещен. Вы можете обновлять только свои растения.")
+
     logger.info(f"Получен запрос на обновление растения user_plant_id={user_plant_id} пользователя {user_id} с данными: {plant_data.model_dump_json(exclude='image_data_uri')}")
     
     user_plant = await get_user_plant_by_id_and_user_id(db, user_plant_id, user_id)
@@ -876,7 +1060,8 @@ async def delete_user_plant(
     user_id: int = Path(..., description="ID пользователя-владельца растения"),
     user_plant_id: int = Path(..., description="ID растения пользователя для удаления"),
     # hard_delete: bool = Query(default=False, description=""), # Если True, выполняет жесткое удаление из БД. Иначе - мягкое (рекомендуется).
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Удаляет растение пользователя.
@@ -893,6 +1078,9 @@ async def delete_user_plant(
         HTTPException 404: Если растение не найдено или принадлежит другому пользователю.
         HTTPException 500: При внутренней ошибке сервера.
     """
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Доступ запрещен. Вы можете удалять только свои растения.")
+
     logger.info(f"Запрос на удаление растения user_plant_id={user_plant_id} пользователя {user_id}.")
 
     user_plant = await get_user_plant_by_id_and_user_id(db, user_plant_id, user_id)
@@ -923,7 +1111,8 @@ async def delete_user_plant(
 async def add_task(
     user_id: int = Path(..., description="ID пользователя-владельца задачи"),
     task_data: TaskCreate = Body(...),
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Создать новую задачу для пользователя.
@@ -935,6 +1124,9 @@ async def add_task(
     Returns:
         Созданная задача
     """
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Доступ запрещен. Вы можете добавлять задачи только себе.")
+
     logger.info(f"Получен запрос на добавление задачи для пользователя {user_id}: {task_data.model_dump_json()}")
 
     try:
@@ -969,9 +1161,13 @@ async def add_task(
 async def get_tasks_for_day(
     user_id: int = Path(..., description="ID пользователя-владельца задач"),
     task_date: Optional[date] = Query(default_factory=date.today, description="Дата (YYYY-MM-DD), для которой нужно получить задачи"),
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Получает список всех задач пользователя на указанную дату."""
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Доступ запрещен. Вы можете просматривать только свои задачи.")
+
     logger.info(f"Запрос задач для пользователя {user_id} на дату: {task_date}.")
     try:
         tasks = await get_tasks_for_date(db, user_id, task_date)
@@ -989,33 +1185,52 @@ async def get_tasks_for_day(
 
 
 @app.get(
-    "/users/{user_id}/tasks/weekly/",
-    response_model=List[TaskOut],
-    summary="Получить задачи на неделю (от сегодня)"
+    "/users/{user_id}/tasks/grouped/",
+    response_model=List[TasksByDate],
+    summary="Получить задачи, сгрупированные по дате"
 )
-async def get_tasks_for_week_endpoint(
+async def get_tasks_grouped_endpoint(
     user_id: int = Path(..., description="ID пользователя-владельца задач"),
-    start_date: Optional[date] = Query(default_factory=date.today, description="Начальная дата недели (YYYY-MM-DD)"),
-    db: AsyncSession = Depends(get_async_db)
+    start_date: Optional[date] = Query(default_factory=date.today, description="Начальная дата (YYYY-MM-DD)"),
+    days: Optional[int] = Query(7, ge=1, le=50, description="Количество дней (1-31)"),
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """
-    Получает список всех задач пользователя на неделю, начиная с указанной даты (По умолчанию - от сегодня).
+    Получает список всех задач пользователя, сгрупированных по дате, начиная с указанной даты (по умолчанию - от сегодня), 
+    заканчивая указанной датой (по умолчанию + 6 дней вперед).
     """
-    logger.info(f"Запрос задач для пользователя {user_id} на неделю, начиная с: {start_date}.")
-    try:
-        tasks = await get_tasks_for_week(db, user_id, start_date)
-        if tasks:
-            logger.info(f"Найдено {len(tasks)} задач для пользователя {user_id} на неделю c {start_date}")
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Доступ запрещен. Вы можете просматривать только свои задачи.")
 
-        return tasks
+    end_date = start_date + timedelta(days=days-1)
     
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Неожиданная ошибка при получении задач для пользователя {user_id} на неделю с {start_date}: {e}", exc_info=True)
+    logger.info(f"Запрос задач для пользователя {user_id} с {start_date} до {end_date}.")
+
+    try:
+
+        grouped_tasks_dict  = await get_tasks_grouped_by_date(db, user_id, start_date, end_date)
+
+        result = []
+        current_date = start_date
+        while current_date <= end_date:
+            tasks_for_date = grouped_tasks_dict.get(current_date, [])
+            result.append(TasksByDate(date=current_date, tasks=tasks_for_date))
+            current_date += timedelta(days=1)
+
+        return result
+    
+    except SQLAlchemyError as e:
+        logger.error(f"SQLAlchemyError при получении задач для пользователя {user_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Произошла внутренняя ошибка сервера при получении задач на неделю."
+            detail="Ошибка базы данных при получении задач"
+        )
+    except Exception as e:
+        logger.error(f"Неожиданная ошибка при получении задач для пользователя {user_id} с {start_date} до {end_date}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Произошла внутренняя ошибка сервера при получении задач с {start_date} до {end_date}."
         )
 
 
@@ -1027,9 +1242,12 @@ async def get_tasks_for_week_endpoint(
 async def get_task_by_id(
     user_id: int = Path(..., description="ID пользователя для проверки прав доступа"),
     task_id: int = Path(..., description="ID задачи"),
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Получить задачу по ID с проверкой прав доступа"""
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Доступ запрещен. Вы можете просматривать только свои задачи.")
 
     logger.info(f"Запрос информации о задаче {task_id} для пользователя {user_id}.")
 
@@ -1064,9 +1282,13 @@ async def update_task_endpoint(
     user_id: int = Path(..., description="ID пользователя для проверки прав доступа"),
     task_id: int = Path(..., description="ID задачи для обновления"),
     task_data: TaskUpdate = Body(...),
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Обновляет информацию о конкретной задаче пользователя."""
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Доступ запрещен. Вы можете обновлять только свои задачи.")
+
     logger.info(f"Получен запрос на обновление задачи {task_id} пользователя {user_id} с данными: {task_data.model_dump_json()}")
     try:
         task_obj = await get_task_by_id_and_user_id(db, task_id, user_id)
@@ -1102,15 +1324,19 @@ async def update_task_endpoint(
 
 @app.delete(
     "/users/{user_id}/tasks/{task_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=MessageResponse,
     summary="Удалить задачу"
 )
 async def delete_task_endpoint(
     user_id: int = Path(..., description="ID пользователя для проверки прав доступа"),
     task_id: int = Path(..., description="ID задачи для удаления"),
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Удалить задачу"""
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Доступ запрещен. Вы можете удалять только свои задачи.")
+
     logger.info(f"Запрос на удаление задачи {task_id} пользователя {user_id}.")
     try:
         task_obj = await get_task_by_id_and_user_id(db, task_id, user_id)
@@ -1153,11 +1379,15 @@ async def get_all_tasks_paginated(
     per_page: int = Query(50, ge=1, le=100, description="Количество задач на странице"),
     is_completed: Optional[bool] = Query(None, description="Фильтр по статусу выполнения задачи"),
     user_plant_id: Optional[int] = Query(None, description="Фильтровать по ID растения пользователя"),
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Получить список задач для указанного пользователя с пагинацией и опциональной фильтрацией.
     """
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Доступ запрещен. Вы можете просматривать только свои задачи.")
+
     logger.info(f"Запрос всех задач для пользователя {user_id}. Страница: {page}, на страницу: {per_page}, Выполнено: {is_completed}, Растение user_plant_id={user_plant_id}")
     try:
         tasks_data = await get_all_user_tasks_paginated(db, user_id, page, per_page, is_completed, user_plant_id)
@@ -1185,9 +1415,13 @@ async def get_all_tasks_paginated(
 async def complete_task_endpoint(
     user_id: int = Path(..., description="ID пользователя для проверки прав доступа"),
     task_id: int = Path(..., description="ID задачи для отметки как выполненной"),
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Отметить задачу как выполненную"""
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Доступ запрещен. Вы можете отмечать только свои задачи.")
+
     try:
         task_obj = await get_task_by_id_and_user_id(db, task_id, user_id)
         
@@ -1225,9 +1459,13 @@ async def complete_task_endpoint(
 async def uncomplete_task_endpoint(
     user_id: int = Path(..., description="ID пользователя для проверки прав доступа"),
     task_id: int = Path(..., description="ID задачи для отмены выполнения"),
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Отменить выполнение задачи"""
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Доступ запрещен. Вы можете отменять выполнение только своих задач.")
+
     logger.info(f"Запрос на отмену выполнения задачи {task_id} для пользователя {user_id}.")
     try:
         task_obj = await get_task_by_id_and_user_id(db, task_id, user_id)

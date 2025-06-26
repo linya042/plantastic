@@ -320,7 +320,7 @@ async def get_plant_by_variety(db: AsyncSession, variety_id: int) -> Optional[Pl
                 )
             ).join(Plant.nn_classes
                ).where(
-                   PlantNNClass.class_id == variety_id
+                   PlantNNClass.plant_id == variety_id
         )
         
         result = await db.execute(stmt)
@@ -634,7 +634,7 @@ async def create_task(db: AsyncSession, user_id: int, task_data: TaskCreate) -> 
         if not user:
             raise ValueError(f"Попытка создания задачи для несуществующего пользователя ID={user_id}.")
 
-        user_plant = await get_user_plant_by_id_and_user_id(db, task_data.user_plant_id, task_data.user_id)
+        user_plant = await get_user_plant_by_id_and_user_id(db, task_data.user_plant_id, user_id)
         if not user_plant:
             raise ValueError(f"Попытка создания задачи: растение пользователя с ID {task_data.user_plant_id} не найдено или не принадлежит пользователю {user_id}.")
         
@@ -651,7 +651,14 @@ async def create_task(db: AsyncSession, user_id: int, task_data: TaskCreate) -> 
         await db.commit()
         await db.refresh(db_task)
         logger.info(f"Задача {db_task.id} успешно создана для пользователя {user_id}.")
-        return db_task
+
+        result = await db.execute(
+            select(Task).options(selectinload(Task.task_type)).where(Task.id == db_task.id)
+        )
+        task = result.scalars().first()
+
+        return task
+    
     except SQLAlchemyError as e:
         logger.error(f"SQLAlchemyError при создании задачи для пользователя {user_id}: {e}", exc_info=True)
         await db.rollback()
@@ -713,30 +720,41 @@ async def get_tasks_for_date(db: AsyncSession, user_id: int, target_date: date) 
         return []
 
 
-async def get_tasks_for_week(db: AsyncSession, user_id: int, start_date: date) -> Optional[List[Task]]:
-    """Получает все задачи пользователя на неделю, начиная с указанной даты."""
+async def get_tasks_grouped_by_date(db: AsyncSession, user_id: int, start_date: date, end_date: date) -> Dict[date, List[Task]]:
+    """Получает задачи пользователя, сгруппированные по дате."""
     try:
-        start_of_week = datetime.combine(start_date, datetime.min.time())
-        end_of_week = datetime.combine(start_date + timedelta(days=6), datetime.max.time())
+        start_datetime = datetime.combine(start_date, datetime.min.time())
+        end_datetime = datetime.combine(end_date, datetime.max.time())
 
         stmt = select(Task).options(
             selectinload(Task.task_type)
         ).where(
             Task.user_id == user_id,
-            Task.due_date.between(start_of_week, end_of_week),
+            Task.due_date.between(start_datetime, end_datetime),
             Task.deleted == False
         ).order_by(Task.due_date)
         
         result = await db.execute(stmt)
         tasks = result.scalars().all()
-        logger.info(f"Найдено {len(tasks)} задач для пользователя {user_id} на неделю с {start_date}.")
-        return tasks
+        logger.info(f"Найдено {len(tasks)} задач из БД для пользователя {user_id} с {start_date} до {end_date}.")
+
+        tasks_by_date = {}
+
+        for task in tasks:
+            task_date = task.due_date.date()
+            if task_date not in tasks_by_date:
+                tasks_by_date[task_date] = []
+            tasks_by_date[task_date].append(task)
+
+        return tasks_by_date
+    
     except SQLAlchemyError as e:
-        logger.error(f"SQLAlchemyError при получении задач для пользователя {user_id} на неделю с {start_date}: {e}", exc_info=True)
-        return []
+        logger.error(f"SQLAlchemyError при получении задач для пользователя {user_id} с {start_date} до {end_date}: {e}", exc_info=True)
+        raise
+    
     except Exception as e:
-        logger.error(f"Неожиданная ошибка при получении задач для пользователя {user_id} на неделю с {start_date}: {e}", exc_info=True)
-        return []
+        logger.error(f"Неожиданная ошибка при получении задач для пользователя {user_id} с {start_date} до {end_date}: {e}", exc_info=True)
+        raise
 
 
 async def get_all_user_tasks_paginated(

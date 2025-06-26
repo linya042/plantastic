@@ -2,99 +2,231 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Plantactic</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"> <!--Чтобы тг не брал скрипты из кэша-->
+  <meta http-equiv="Pragma" content="no-cache"> <!--Чтобы тг не брал скрипты из кэша-->
+  <meta http-equiv="Expires" content="0"> <!--Чтобы тг не брал скрипты из кэша-->
+  <title>Plantastic</title>
+  <link rel="stylesheet" href="style.css?v=202506252336" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-  <main>
-    <section id="plantEditor" class="page">
-      <h2>Редактирование информации о растении</h2>
-      <input id="editPlantName" placeholder="Название растения" />
-      <input id="editPlantPhoto" type="file" accept="image/*" />
-      <textarea id="editPlantNotes" placeholder="Описание..."></textarea>
-      <button id="savePlantChanges">Сохранить</button>
-    </section>
+
+  <div id="splash" class="splash active">
+    <div class="splash-content">
+      <img id="splash-logo" src="icons/название.svg" alt="Plantastic">
+      <img id="splash-pot" src="icons/загрузка_цветок0.svg" alt="Загрузка...">
+      <img id="splash-bar" src="icons/загрузка0.svg" alt="Прогресс">
+      <div id="splash-label">Загрузка...</div>
+    </div>
+  </div>
+
+  <main id="main-app" class="main-container" style="display:none;">
     <section id="diagnose" class="page active">
       <div class="calendar-widget">
         <div class="calendar-header">
-          <button id="prevWeekBtn">&lt;</button>
+          <button id="prevWeekBtn">
+            <svg width="25" height="28" viewBox="0 0 25 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2.59863 11.8506C0.96768 12.8194 0.96768 15.1806 2.59863 16.1494L19.9736 26.4678C21.6401 27.4571 23.75 26.2555 23.75 24.3174L23.75 3.68262C23.75 1.74455 21.6401 0.542896 19.9736 1.53223L2.59863 11.8506Z" fill="#84B864" stroke="#1E5719"/>
+            </svg></button>
+          <button id="todayBtnWeek">Сегодня</button>
           <span id="calendarMonth">Месяц</span>
-          <button id="nextWeekBtn">&gt;</button>
+          <button id="nextWeekBtn">
+            <svg width="24" height="27" viewBox="0 0 24 27" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21.9014 11.3506C23.5323 12.3194 23.5323 14.6806 21.9014 15.6494L4.52637 25.9678C2.85993 26.9571 0.75 25.7555 0.75 23.8174L0.75 3.18262C0.75 1.24455 2.85993 0.0428962 4.52637 1.03223L21.9014 11.3506Z" fill="#84B864" stroke="#1E5719"/>
+            </svg>
+          </button>
         </div>
         <div class="calendar-days" id="calendarDays"></div>
       </div>
-      <ul id="weekTaskList" class="task-list"></ul>
+      <div id="tasksList" class="task-list"></div>
     </section>
 
     <section id="calendar" class="page">
-      <h2>Календарь</h2>
+      <!-- <h2>Календарь</h2> -->
       <div class="month-calendar">
         <div class="calendar-nav">
-          <button id="prevMonth">&lt;</button>
+          <button id="prevMonth">
+            <svg width="25" height="28" viewBox="0 0 25 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2.59863 11.8506C0.96768 12.8194 0.96768 15.1806 2.59863 16.1494L19.9736 26.4678C21.6401 27.4571 23.75 26.2555 23.75 24.3174L23.75 3.68262C23.75 1.74455 21.6401 0.542896 19.9736 1.53223L2.59863 11.8506Z" fill="#84B864" stroke="#1E5719"/>
+            </svg></button>
+          </button>
+          <button id="todayBtnMonth" class="calendar-today-btn">Сегодня</button>
           <span id="calendarMonthName">Месяц</span>
-          <button id="nextMonth">&gt;</button>
+          <button id="nextMonth">
+            <svg width="24" height="27" viewBox="0 0 24 27" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21.9014 11.3506C23.5323 12.3194 23.5323 14.6806 21.9014 15.6494L4.52637 25.9678C2.85993 26.9571 0.75 25.7555 0.75 23.8174L0.75 3.18262C0.75 1.24455 2.85993 0.0428962 4.52637 1.03223L21.9014 11.3506Z" fill="#84B864" stroke="#1E5719"/>
+            </svg>
+          </button>
         </div>
         <div class="calendar-grid" id="monthGrid"></div>
       </div>
       <div class="event-form">
         <h3>Событие на <span id="selectedDateLabel">...</span>:</h3>
-        <select id="eventType">
-          <option value="Полив">Полив</option>
-          <option value="Удобрение">Удобрение</option>
-        </select>
+        <label for="taskTypeSelect">Тип задачи:</label>
+        <select id="taskTypeSelect"></select>
         <select id="plantSelect">
         </select>
         <button id="addEventButton">Добавить событие</button>
       </div>
-      <ul id="calendarTaskList" class="task-list"></ul>
     </section>
 
     <section id="recognition" class="page">
-      <h2>Распознавание</h2>
       <div class="recognition-buttons">
         <button id="infoBtn">Информация о растении</button>
         <button id="sortBtn">Определить сорт</button>
         <button id="diseaseBtn">Определить заболевание</button>
       </div>
-      <input type="file" id="photoInput" accept="image/*" />
-      <div id="recognitionResult"></div>
     </section>
-
+    
+    <section id="photoAdviceSection" class="page">
+      <h2>Советы по фото</h2>
+      <div class="photo-tips">
+        <img src="icons/идеал.svg" alt="Ок" style="max-width:90px; margin:10px auto; display:block;">
+        <div style="font-weight:500; margin-bottom: 10px;">Сделайте фото растения крупно, чтобы был виден один экземпляр</div>
+        <div class="tips-row" style="display:flex; justify-content:space-around; margin-top:14px;">
+          <div style="flex:1; text-align:center;">
+            <img src="icons/слишком_близко.svg" alt="Слишком близко" style="max-width:60px;"><br>
+            <span>Слишком близко</span>
+          </div>
+          <div style="flex:1; text-align:center;">
+            <img src="icons/слишком_далеко.svg" alt="Слишком далеко" style="max-width:60px;"><br>
+            <span>Слишком далеко</span>
+          </div>
+          <div style="flex:1; text-align:center;">
+            <img src="icons/с другим видом.svg" alt="Несколько видов" style="max-width:60px;"><br>
+            <span>Несколько видов</span>
+          </div>
+        </div>
+      </div>
+      <button id="adviceContinueBtn" class="btn">Продолжить</button>
+      <button id="adviceBackBtnrecog" class="btn">Назад</button>
+    </section>
+    <section id="photoUploadSection" class="page active">
+      <h2>Загрузите фото растения</h2>
+      <label for="uploadSortPhotoBtn" class="custom-file-upload">
+        <input type="file" id="uploadSortPhotoBtn" accept="image/*">
+        Выбрать файл
+      </label>
+      <div id="uploadSortPreview">Файл не выбран</div>
+      <button id="backToAdviceBtn" class="btn btn--back">Назад</button>
+    </section>
+    <section id="sortResultSection" class="page">
+      <h2>Это растение с вероятностью:</h2>
+      <div id="recognitionHeader"></div>
+      <div id="recognitionResult"></div>
+      <div id="sortResults"></div>
+      <button id="backToUploadBtn" class="btn btn--back">Назад</button>
+    </section>
+    <section id="diseaseAdviceSection" class="page">
+      <h2>Советы по фото</h2>
+      <div class="photo-tips">
+        <img src="icons/идеал.svg" alt="Ок" style="max-width:90px; margin:10px auto; display:block;">
+        <div style="font-weight:500; margin-bottom: 10px;">Сделайте фото больной части растения крупно и чётко</div>
+        <div class="tips-row" style="display:flex; justify-content:space-around; margin-top:14px;">
+          <div style="flex:1; text-align:center;">
+            <img src="icons/слишком_близко.svg" alt="Слишком близко" style="max-width:60px;"><br>
+            <span>Слишком близко</span>
+          </div>
+          <div style="flex:1; text-align:center;">
+            <img src="icons/слишком_далеко.svg" alt="Слишком далеко" style="max-width:60px;"><br>
+            <span>Слишком далеко</span>
+          </div>
+          <div style="flex:1; text-align:center;">
+            <img src="icons/с другим видом.svg" alt="Несколько видов" style="max-width:60px;"><br>
+            <span>Несколько растений</span>
+          </div>
+        </div>
+      </div>
+      <button id="diseaseAdviceContinueBtn" class="btn">Продолжить</button>
+      <button id="diseaseAdviceBackBtn" class="btn">Назад</button>
+    </section>
+    <section id="diseaseUploadSection" class="page">
+      <h2>Загрузите фото заболевания</h2>
+      <label for="uploadDiseasePhotoBtn" class="custom-file-upload">
+        <input type="file" id="uploadDiseasePhotoBtn" accept="image/*">
+        Выбрать файл
+      </label>
+      <div id="uploadDiseasePreview" style="margin-top:10px;"></div>
+      <button id="backToDiseaseAdviceBtn" class="btn btn--back">Назад</button>
+    </section>
+    <section id="diseaseResultSection" class="page">
+      <h2>Возможные заболевания:</h2>
+      <div id="diseaseRecognitionHeader"></div>
+      <div id="diseaseRecognitionResult"></div>
+      <button id="backToDiseaseUploadBtn" class="btn btn--back">Назад</button>
+    </section>
+    <section id="allPlantsSection" class="page" >
+      <h2>Все растения</h2>
+      <div style="margin-bottom:16px;display:flex;gap:10px;">
+        <input id="plantSearchInput" type="text" placeholder="Поиск растения..." style="flex:1;padding:8px;border-radius:8px;border:1px solid #ccc;">
+        <button id="plantSearchBtn" style="border-radius:8px;padding:8px 16px;">🔍</button>
+      </div>
+      <div id="allPlantsList"></div>
+      <button id="backFromAllPlantsBtn" class="btn btn--back">Назад</button>
+    </section>
     <section id="water" class="page">
       <h2>Сколько воды нужно твоему растению?</h2>
 
-      <label for="plantType">Тип растения:</label>
+      <label for="plantType">Вид растения:</label>
       <select id="plantType">
         <option value="Монстера">Монстера</option>
         <option value="Фикус">Фикус</option>
       </select>
 
+      <label for="soilType">Тип грунта:</label>
+      <select id="soilType">
+        <option value="0">Не выбрано</option>
+      </select>
+
       <div class="control-group">
         <label>Температура:</label>
         <div class="control">
-          <button onclick="changeValue('temperature', -1)">◀</button>
+          <button onclick="changeValue('temperature', -1)">
+            <svg width="25" height="28" viewBox="0 0 25 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2.59863 11.8506C0.96768 12.8194 0.96768 15.1806 2.59863 16.1494L19.9736 26.4678C21.6401 27.4571 23.75 26.2555 23.75 24.3174L23.75 3.68262C23.75 1.74455 21.6401 0.542896 19.9736 1.53223L2.59863 11.8506Z" fill="#84B864" stroke="#1E5719"/>
+            </svg></button>
           <span id="temperature">20</span>°C
-          <button onclick="changeValue('temperature', 1)">▶</button>
+          <button onclick="changeValue('temperature', 1)">
+            <svg width="24" height="27" viewBox="0 0 24 27" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21.9014 11.3506C23.5323 12.3194 23.5323 14.6806 21.9014 15.6494L4.52637 25.9678C2.85993 26.9571 0.75 25.7555 0.75 23.8174L0.75 3.18262C0.75 1.24455 2.85993 0.0428962 4.52637 1.03223L21.9014 11.3506Z" fill="#84B864" stroke="#1E5719"/>
+            </svg>
+          </button>
         </div>
       </div>
 
       <div class="control-group">
         <label>Влажность воздуха:</label>
         <div class="control">
-          <button onclick="changeValue('humidity', -5)">◀</button>
+          <button onclick="changeValue('humidity', -5)">
+            <svg width="25" height="28" viewBox="0 0 25 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2.59863 11.8506C0.96768 12.8194 0.96768 15.1806 2.59863 16.1494L19.9736 26.4678C21.6401 27.4571 23.75 26.2555 23.75 24.3174L23.75 3.68262C23.75 1.74455 21.6401 0.542896 19.9736 1.53223L2.59863 11.8506Z" fill="#84B864" stroke="#1E5719"/>
+            </svg></button>
           <span id="humidity">50</span>%
-          <button onclick="changeValue('humidity', 5)">▶</button>
+          <button onclick="changeValue('humidity', 5)">
+            <svg width="24" height="27" viewBox="0 0 24 27" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21.9014 11.3506C23.5323 12.3194 23.5323 14.6806 21.9014 15.6494L4.52637 25.9678C2.85993 26.9571 0.75 25.7555 0.75 23.8174L0.75 3.18262C0.75 1.24455 2.85993 0.0428962 4.52637 1.03223L21.9014 11.3506Z" fill="#84B864" stroke="#1E5719"/>
+            </svg>
+          </button>
         </div>
       </div>
 
       <div class="control-group">
         <label>Объём горшка:</label>
         <div class="control">
-          <button onclick="changeValue('potSize', -1)">◀</button>
-          <span id="potSize">2</span> л
-          <button onclick="changeValue('potSize', 1)">▶</button>
+          <button onclick="changeValue('potSize', -0.5)"> 
+            <svg width="25" height="28" viewBox="0 0 25 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2.59863 11.8506C0.96768 12.8194 0.96768 15.1806 2.59863 16.1494L19.9736 26.4678C21.6401 27.4571 23.75 26.2555 23.75 24.3174L23.75 3.68262C23.75 1.74455 21.6401 0.542896 19.9736 1.53223L2.59863 11.8506Z" fill="#84B864" stroke="#1E5719"/>
+            </svg>
+          </button>
+          
+          <input type="number" id="potSize" value="2" min="1" max="50" step="0.5"> л
+          
+          <button onclick="changeValue('potSize', 0.5)"> 
+            <svg width="24" height="27" viewBox="0 0 24 27" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21.9014 11.3506C23.5323 12.3194 23.5323 14.6806 21.9014 15.6494L4.52637 25.9678C2.85993 26.9571 0.75 25.7555 0.75 23.8174L0.75 3.18262C0.75 1.24455 2.85993 0.0428962 4.52637 1.03223L21.9014 11.3506Z" fill="#84B864" stroke="#1E5719"/>
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -106,18 +238,70 @@
 
       <button id="calcWaterBtn">Рассчитать</button>
 
-      <div id="waterResult" class="water-result"></div>
+      <div id="waterResult" class="water-result" style="display:none"></div>
     </section>
 
     <section id="profile" class="page">
       <h2>Мои растения</h2>
       <div class="add-buttons">
-        <button id="addByPhotoBtn">Добавить по фото</button>
-        <button id="addByNameBtn">Добавить по названию</button>
+        <button id="addByNameBtn">Добавить растение</button>
       </div>
       <input type="file" id="plantPhotoInput" accept="image/*" style="display:none">
       <div id="plantsContainer" class="plants-list"></div>
     </section>
+
+
+    <section id="editPlantSection" class="page" style="display:none;">
+      <h2 id="editPlantSectionTitle">Редактирование растения</h2>
+      <label>
+        Растение из справочника:<br>
+        <select id="editPlantSectionPlant"></select>
+      </label>
+      <br><br>
+      <label>
+        "Кличка" растения:<br>
+        <input id="editPlantSectionName" type="text" style="width:100%;">
+      </label>
+      <br><br>
+      <label>
+        Описание:<br>
+        <textarea id="editPlantSectionDescription" style="width:100%; min-height:60px;"></textarea>
+      </label>
+      <br><br>
+      <label>
+        Дата приобретения:<br>
+        <input id="editPlantSectionAcquisitionDate" type="date">
+      </label>
+      <br><br>
+      <label>
+        Тип грунта:<br>
+        <select id="editPlantSectionSoilType"></select>
+      </label>
+      <br><br>
+      <label>
+        Фото:<br>
+        <input id="editPlantSectionPhoto" type="file" accept="image/*">
+        <br>
+        <img id="editPlantSectionPreview" src="icons/plant.svg" style="max-width:150px; max-height:100px; margin-top:10px; border:1px solid #ccc;">
+      </label>
+      <br><br>
+      <button id="savePlantSectionBtn" style="width:100%; padding:8px 0;">Сохранить</button>
+      <button id="cancelEditPlantSectionBtn" style="width:100%; padding:8px 0; margin-top:8px;">Отмена</button>
+    </section>
+
+
+  
+    <div id="plantInfoSection" class="page">
+      <button class="btn btn--back" id="closePlantInfoBtn">← Назад</button>
+      <div id="plantInfoContent"></div>
+    </div>
+    <div id="diseaseInfoSection" class="page">
+      <button id="backToDiseaseResultsBtn" class="btn btn-back">Назад</button>
+      <div id="diseaseInfoContent"></div>
+    </div>
+    <div id="plantInfoSectionforallplants" class="page">
+      <div id="plantInfoContentforallplants"></div>
+    </div>
   </main>
 
   <nav class="bottom-nav">
@@ -128,6 +312,6 @@
     <button onclick="navigateTo('profile')"><img src="icons/аккаунт.svg" /></button>
   </nav>
 
-  <script src="dist/main.js" defer></script>
+  <script src="dist/main.js?v=202506261342" defer></script>
 </body>
 </html>

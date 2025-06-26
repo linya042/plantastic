@@ -66,6 +66,8 @@ class AuthResponse(BaseModel):
     message: str
     is_new_user: bool
     user_data: Optional[UserOut] = None
+    access_token: str
+    token_type: str = 'bearer'
 
 
 # ИЗОБРАЖЕНИЯ 
@@ -149,6 +151,7 @@ class GenusWateringCoefficient(BaseModel):
 
 
 class VarietyWithImage(BaseModel):
+    class_id: int
     variety_name: str
     variety_images_raw: List[ImageOut] = Field(alias='plant_nn_classes_images',default_factory=list, description="Сырые данные изображений для сорта", exclude=True)
     model_config = ConfigDict(from_attributes=True)
@@ -189,6 +192,15 @@ class PlantOut(BaseModel):
     varietys: List[VarietyWithImage] = Field(alias="nn_classes", default_factory=list, description="Список сортов растений c изображениями")
     
     model_config = ConfigDict(from_attributes=True)
+
+    @computed_field
+    @property
+    def images(self) -> List[str]:
+        """Получить все изображения из всех сортов для обратной совместимости"""
+        all_images = []
+        for variety in self.varietys:
+            all_images.extend(variety.variety_images_url_list)
+        return all_images
     
 
 class PlantOutForSearch(BaseModel):
@@ -197,6 +209,7 @@ class PlantOutForSearch(BaseModel):
     scientific_name: str
     common_name_ru: Optional[str] = None
     synonyms: Optional[str] = None
+    representative_image: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -578,7 +591,13 @@ class TaskList(BaseModel):
     total_pages: int
 
     model_config = ConfigDict(from_attributes=True)
-    
+
+
+class TasksByDate(BaseModel):
+    """Схема для списка задач, сгрупированных по дням"""
+    date: date
+    tasks: List[TaskOut]
+
 
 class HealthResponse(BaseModel):
     """Схема для health check"""
